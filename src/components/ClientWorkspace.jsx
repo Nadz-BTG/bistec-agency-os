@@ -1,23 +1,34 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { Download, Upload } from 'lucide-react'
 import { COLORS, FONT_MONO } from '../theme.js'
 import { StageBadge, Avatar, ProgressBar, EditableField, Checkbox, Button, EditDeleteIcons, teamName } from './ui.jsx'
-import { formatDate, relativeDayLabel } from '../dates.js'
+import { formatDate, relativeDayLabel, todayISO } from '../dates.js'
 
 const TABS = ['Overview', 'Projects', 'Tasks', 'Check-ins', 'Files']
+const MAX_FILE_BYTES = 4 * 1024 * 1024
 
 function ownerLabel(t, team) {
   if (t.ownerType === 'team') return teamName(team, t.owner)
   return t.owner
 }
 
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export default function ClientWorkspace({
-  client, tasks, projects, checkins, team, onUpdateClient, onEditClient, onDeleteClient,
+  client, tasks, projects, checkins, team, currentUser, onUpdateClient, onEditClient, onDeleteClient,
   onToggleTask, onEditTask, onDeleteTask, onDeleteTasks, onAddTask,
   onOpenAiDrawer, onOpenKanban, onOpenCheckIn,
   onAddProject, onEditProject, onDeleteProject,
+  onAddFiles, onDeleteFile,
 }) {
   const [tab, setTab] = useState('Overview')
   const [selectedTasks, setSelectedTasks] = useState(new Set())
+  const fileInputRef = useRef(null)
+  const clientFiles = client.files || []
   const clientTasks = tasks.filter(t => t.clientId === client.id)
   const clientProjects = projects.filter(p => p.clientId === client.id)
   const openCount = clientTasks.filter(t => t.status === 'open').length
@@ -42,6 +53,30 @@ export default function ClientWorkspace({
   function bulkDelete() {
     onDeleteTasks([...selectedTasks])
     setSelectedTasks(new Set())
+  }
+
+  function handleFileSelect(e) {
+    const picked = Array.from(e.target.files || [])
+    e.target.value = ''
+    if (picked.length === 0) return
+    const tooBig = picked.filter(f => f.size > MAX_FILE_BYTES)
+    const ok = picked.filter(f => f.size <= MAX_FILE_BYTES)
+    if (tooBig.length > 0) {
+      window.alert(`${tooBig.map(f => f.name).join(', ')} — over 4MB and skipped. Files are stored in this browser only, so keep uploads small.`)
+    }
+    Promise.all(ok.map(f => new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = () => resolve({
+        id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: f.name,
+        size: f.size,
+        type: f.type,
+        dataUrl: reader.result,
+        uploadedBy: currentUser?.name || 'Someone',
+        uploadedAt: todayISO(),
+      })
+      reader.readAsDataURL(f)
+    }))).then(entries => onAddFiles(entries))
   }
 
   return (
@@ -274,7 +309,36 @@ export default function ClientWorkspace({
       )}
 
       {tab === 'Files' && (
-        <div style={{ padding: '24px 32px 32px', fontSize: 13, color: COLORS.textFaint }}>No files uploaded yet.</div>
+        <div style={{ padding: '24px 32px 32px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11.5, color: COLORS.textFaint }}>Stored in this browser only — not synced across devices.</span>
+            <Button variant="primary" onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Upload size={14} /> Upload file
+            </Button>
+            <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} style={{ display: 'none' }} />
+          </div>
+          {clientFiles.length === 0 && <div style={{ fontSize: 13, color: COLORS.textFaint, marginTop: 6 }}>No files uploaded yet.</div>}
+          {clientFiles.map((f, i) => (
+            <div key={f.id} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '11px 4px',
+              borderBottom: i < clientFiles.length - 1 ? `1px solid rgba(20,55,125,.06)` : 'none',
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
+                <div style={{ fontSize: 11.5, color: COLORS.textFaint, marginTop: 2 }}>
+                  {formatBytes(f.size)} · uploaded by {f.uploadedBy} · {formatDate(f.uploadedAt)}
+                </div>
+              </div>
+              <a href={f.dataUrl} download={f.name} title="Download" style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 26, height: 26, borderRadius: 6, color: COLORS.textFaint, flexShrink: 0,
+              }}>
+                <Download size={14} />
+              </a>
+              <EditDeleteIcons onDelete={() => onDeleteFile(f.id)} deleteTitle="Delete file" />
+            </div>
+          ))}
+        </div>
       )}
     </main>
   )

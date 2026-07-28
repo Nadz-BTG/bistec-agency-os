@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { COLORS, AVATAR_SWATCHES } from '../theme.js'
 import { STAGES, PRIORITIES, PROJECT_STATUSES, OWNER_TYPES, TASK_COLUMNS, TEAM_ROLES } from '../constants.js'
 import { todayISO } from '../dates.js'
-import { Modal, Field, Button, TagListEditor, IconButton, inputStyle, textareaStyle } from './ui.jsx'
+import { Modal, Field, Button, TagListEditor, IconButton, inputStyle, textareaStyle, teamName } from './ui.jsx'
 import { Trash2 } from 'lucide-react'
 
 function pillStyle(active) {
@@ -150,7 +150,7 @@ export function EditProjectModal({ project, isNew, team, onSave, onClose }) {
   return (
     <Modal title={isNew ? 'Add project' : 'Edit project'} onClose={onClose} width={420}>
       <Field label="Project name"><input style={inputStyle} value={form.name} onChange={e => set({ name: e.target.value })} autoFocus /></Field>
-      <Field label="Owner">
+      <Field label="Assigned to">
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {team.map(m => (
             <span key={m.id} onClick={() => set({ owner: m.id })} style={pillStyle(form.owner === m.id)}>{m.name}</span>
@@ -236,12 +236,12 @@ export function EditTaskModal({ task, isNew, clients, projects, team, fixedClien
         </select>
       </Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="Owner type">
+        <Field label="Assigned to">
           <select style={inputStyle} value={form.ownerType} onChange={e => set({ ownerType: e.target.value, owner: e.target.value === 'team' ? (team[0]?.id || '') : '' })}>
             {OWNER_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </Field>
-        <Field label="Owner">
+        <Field label="Assignee">
           {form.ownerType === 'team' ? (
             <select style={inputStyle} value={form.owner} onChange={e => set({ owner: e.target.value })}>
               {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -252,6 +252,11 @@ export function EditTaskModal({ task, isNew, clients, projects, team, fixedClien
           )}
         </Field>
       </div>
+      {!isNew && task?.assignedBy && (
+        <div style={{ margin: '-6px 0 12px', fontSize: 11, color: COLORS.textFaint, fontStyle: 'italic' }}>
+          Assigned by {teamName(team, task.assignedBy)}
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
         <Field label="Priority">
           <select style={inputStyle} value={form.priority} onChange={e => set({ priority: e.target.value })}>

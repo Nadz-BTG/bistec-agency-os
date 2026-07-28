@@ -10,7 +10,7 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar({
-  view, onNavigate, clients, activeClientId, counts, team,
+  view, onNavigate, clients, activeClientId, counts, team, currentUser, saveStatus, onLogout,
   onAddTeamMember, onEditTeamMember, onDeleteTeamMember,
 }) {
   return (
@@ -18,9 +18,18 @@ export default function Sidebar({
       background: COLORS.navy, color: '#EAF0F8', padding: '20px 16px',
       display: 'flex', flexDirection: 'column', gap: 26, width: 212, flexShrink: 0,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => onNavigate('home')}>
-        <div style={{ width: 22, height: 22, borderRadius: 6, background: COLORS.orange }} />
-        <span style={{ font: '600 14px "Instrument Sans",sans-serif', letterSpacing: '-.01em' }}>Agency OS</span>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => onNavigate('home')}>
+          <div style={{ width: 22, height: 22, borderRadius: 6, background: COLORS.orange }} />
+          <span style={{ font: '600 14px "Instrument Sans",sans-serif', letterSpacing: '-.01em' }}>Agency OS</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 8, fontSize: 10.5, color: '#8FA3C0' }}>
+          <span style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: saveStatus === 'saving' ? '#FCAF17' : '#4ADE80',
+          }} />
+          {saveStatus === 'saving' ? 'Saving…' : 'Saved'}
+        </div>
       </div>
 
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 13 }}>
@@ -73,6 +82,7 @@ export default function Sidebar({
             <Avatar name={m.name} initials={m.initials} team={team} size={24} />
             <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {m.name} <span style={{ color: '#8FA3C0', fontSize: 11 }}>· {m.role}</span>
+              {currentUser?.id === m.id && <span style={{ color: COLORS.orange, fontSize: 10.5, fontWeight: 600 }}> · you</span>}
             </span>
             <EditDeleteIcons light onEdit={() => onEditTeamMember(m)} onDelete={() => onDeleteTeamMember(m)} deleteTitle="Remove teammate" />
           </div>
@@ -83,6 +93,9 @@ export default function Sidebar({
             <Plus size={13} />
           </div>
           Add teammate
+        </div>
+        <div onClick={onLogout} style={{ fontSize: 11.5, color: '#8FA3C0', cursor: 'pointer', marginTop: 4 }}>
+          Switch profile
         </div>
       </div>
     </aside>

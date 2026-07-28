@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { COLORS, FONT_MONO } from '../theme.js'
 import { todayISO } from '../dates.js'
 import { Button, teamName, inputStyle } from './ui.jsx'
@@ -26,22 +26,64 @@ function EditableList({ items, onChange, placeholder, color }) {
   )
 }
 
-export default function CheckIn({ client, team, checkin, onSave, onSendToClient }) {
-  const [weekStart, setWeekStart] = useState(checkin?.weekStart || todayISO())
-  const [wentOut, setWentOut] = useState(checkin?.wentOut || [])
-  const [cameIn, setCameIn] = useState(checkin?.cameIn || [])
-  const [outstanding, setOutstanding] = useState(checkin?.outstanding || [])
-  const [nextPriority, setNextPriority] = useState(checkin?.nextPriority || '')
-  const [notes, setNotes] = useState(checkin?.notes || '')
+// Scans this client's current tasks into check-in draft content. "Came in" isn't
+// derivable from task state, so it's left for manual entry and never overwritten.
+function generateFromTasks(clientId, tasks) {
+  const clientTasks = tasks.filter(t => t.clientId === clientId)
+  const wentOut = clientTasks
+    .filter(t => t.status === 'live')
+    .map(t => (t.note ? `${t.title} — ${t.note}` : `${t.title} — live`))
+  const flagged = clientTasks
+    .filter(t => t.status === 'open' && (t.overdueDays || t.waitingDays != null))
+    .sort((a, b) => (b.waitingDays || b.overdueDays || 0) - (a.waitingDays || a.overdueDays || 0))
+  const outstanding = flagged.map(t => (t.waitingDays != null
+    ? `${t.title} — waiting ${t.waitingDays}d${t.waitingOn ? ` on ${t.waitingOn}` : ''}`
+    : `${t.title} — ${t.overdueDays}d overdue`))
+  const worst = flagged[0]
+  const nextPriority = worst
+    ? `Unblock "${worst.title}"${worst.blocks ? ` — ${worst.blocks}` : ''}.`
+    : 'Nothing urgent — keep the current pace.'
+  return { wentOut, outstanding, nextPriority }
+}
 
-  function save(status) {
+export default function CheckIn({ client, team, tasks, currentUser, checkin, onSave, onSendToClient }) {
+  const generated = checkin ? null : generateFromTasks(client.id, tasks)
+  const [weekStart, setWeekStart] = useState(checkin?.weekStart || todayISO())
+  const [wentOut, setWentOut] = useState(checkin?.wentOut || generated?.wentOut || [])
+  const [cameIn, setCameIn] = useState(checkin?.cameIn || [])
+  const [outstanding, setOutstanding] = useState(checkin?.outstanding || generated?.outstanding || [])
+  const [nextPriority, setNextPriority] = useState(checkin?.nextPriority || generated?.nextPriority || '')
+  const [notes, setNotes] = useState(checkin?.notes || '')
+  const [status, setStatus] = useState(checkin?.status || 'draft')
+
+  function save(nextStatus) {
+    setStatus(nextStatus)
     onSave({
       id: checkin?.id || `ci-${client.id}-${Date.now() % 100000}`,
       clientId: client.id,
       weekStart,
-      status,
+      status: nextStatus,
+      loggedBy: currentUser?.id || checkin?.loggedBy || null,
       wentOut, cameIn, outstanding, nextPriority, notes,
     })
+  }
+
+  const mounted = useRef(false)
+  const debounceRef = useRef(null)
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return }
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => save(status), 800)
+    return () => clearTimeout(debounceRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStart, wentOut, cameIn, outstanding, nextPriority, notes])
+
+  function refreshFromTasks() {
+    if (!window.confirm('Refresh "went out", "outstanding" and "next priority" from current tasks? Your notes and "came in" stay untouched.')) return
+    const g = generateFromTasks(client.id, tasks)
+    setWentOut(g.wentOut)
+    setOutstanding(g.outstanding)
+    setNextPriority(g.nextPriority)
   }
 
   return (
@@ -54,8 +96,11 @@ export default function CheckIn({ client, team, checkin, onSave, onSendToClient 
           </div>
           <h1 style={{ margin: '6px 0 0', font: "400 30px/1 'Instrument Serif',serif" }}>Check-in</h1>
         </div>
-        <div style={{ padding: '7px 12px', borderRadius: 7, background: '#FEF1D3', color: COLORS.amberDark, font: '600 11.5px "Instrument Sans",sans-serif' }}>
-          {checkin?.status === 'sent' ? 'Sent' : 'Draft'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span onClick={refreshFromTasks} style={{ fontSize: 11.5, color: COLORS.orange, cursor: 'pointer' }}>↻ Refresh from tasks</span>
+          <div style={{ padding: '7px 12px', borderRadius: 7, background: '#FEF1D3', color: COLORS.amberDark, font: '600 11.5px "Instrument Sans",sans-serif' }}>
+            {status === 'sent' ? 'Sent' : 'Draft · autosaving'}
+          </div>
         </div>
       </div>
 
@@ -86,7 +131,9 @@ export default function CheckIn({ client, team, checkin, onSave, onSendToClient 
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', flexWrap: 'wrap', gap: 10 }}>
-        <span style={{ fontSize: 12, color: COLORS.textFaint }}>{teamName(team, team.find(m => m.id !== client.lead)?.id || client.lead)} will see this in their Monday digest.</span>
+        <span style={{ fontSize: 12, color: COLORS.textFaint }}>
+          Logged by {currentUser?.name || 'you'} · {teamName(team, team.find(m => m.id !== client.lead)?.id || client.lead)} will see this in their Monday digest.
+        </span>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="outline" onClick={() => { save('sent'); onSendToClient() }}>Send to client</Button>
           <Button variant="primary" onClick={() => save('draft')}>Save check-in</Button>

@@ -76,7 +76,7 @@ export default function TasksTable({ tasks, clients, projects, team, onToggleTas
       <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: COLS, alignItems: 'center', padding: '9px 16px', background: '#EFF3F8', borderBottom: `1px solid ${COLORS.border}`, font: `600 10px ${FONT_MONO}`, letterSpacing: '.07em', color: COLORS.textFaint }}>
           <Checkbox checked={filtered.length > 0 && selected.size === filtered.length} onClick={toggleAll} title="Select all" />
-          <div /><div>TASK</div><div>CLIENT</div><div>PROJECT</div><div>OWNER</div><div>PRIORITY</div><div>DUE</div><div>WAITING ON</div><div />
+          <div /><div>TASK</div><div>CLIENT</div><div>PROJECT</div><div>ASSIGNEE</div><div>PRIORITY</div><div>DUE</div><div>WAITING ON</div><div />
         </div>
         <div style={{ fontSize: 13 }}>
           {filtered.map((t, i) => (

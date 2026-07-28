@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CLIENTS, PROJECTS, TASKS, CHECKINS, TEAM } from './data.js'
 import { dueLabelFor, overdueDaysFor, waitingDaysFor } from './dates.js'
+import Login from './components/Login.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Home from './components/Home.jsx'
 import ClientWorkspace from './components/ClientWorkspace.jsx'
@@ -14,6 +15,7 @@ import CheckinsHub from './components/CheckinsHub.jsx'
 import { EditClientModal, EditTeamMemberModal, EditProjectModal, EditTaskModal } from './components/Modals.jsx'
 
 const STORAGE_KEY = 'agency-os-state-v2'
+const USER_KEY = 'agency-os-user-v1'
 
 function loadState() {
   try {
@@ -23,8 +25,14 @@ function loadState() {
   return { clients: CLIENTS, projects: PROJECTS, tasks: TASKS, checkins: CHECKINS, team: TEAM }
 }
 
+function loadCurrentUserId() {
+  try { return localStorage.getItem(USER_KEY) || null } catch { return null }
+}
+
 export default function App() {
   const [state, setState] = useState(loadState)
+  const [currentUserId, setCurrentUserId] = useState(loadCurrentUserId)
+  const [saveStatus, setSaveStatus] = useState('saved')
   const [view, setView] = useState('home')
   const [activeClientId, setActiveClientId] = useState(null)
   const [activeProjectId, setActiveProjectId] = useState(null)
@@ -35,9 +43,23 @@ export default function App() {
   const [projectModal, setProjectModal] = useState(null) // { isNew, data, clientId }
   const [taskModal, setTaskModal] = useState(null) // { isNew, data, fixedClientId, fixedProjectId }
 
+  const saveTimeout = useRef(null)
+  const skipFirstSave = useRef(true)
   useEffect(() => {
+    if (skipFirstSave.current) { skipFirstSave.current = false; return }
+    setSaveStatus('saving')
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) } catch { /* storage unavailable */ }
+    clearTimeout(saveTimeout.current)
+    saveTimeout.current = setTimeout(() => setSaveStatus('saved'), 500)
+    return () => clearTimeout(saveTimeout.current)
   }, [state])
+
+  useEffect(() => {
+    try {
+      if (currentUserId) localStorage.setItem(USER_KEY, currentUserId)
+      else localStorage.removeItem(USER_KEY)
+    } catch { /* storage unavailable */ }
+  }, [currentUserId])
 
   const { clients, projects, checkins, team } = state
   const tasks = state.tasks.map(t => ({
@@ -47,9 +69,10 @@ export default function App() {
     waitingDays: waitingDaysFor(t),
   }))
   const activeClient = clients.find(c => c.id === activeClientId) || null
+  const currentUser = team.find(m => m.id === currentUserId) || null
 
   const counts = {
-    mine: tasks.filter(t => t.status === 'open' && t.ownerType === 'team' && t.owner === team[0]?.id).length,
+    mine: tasks.filter(t => t.status === 'open' && t.ownerType === 'team' && t.owner === currentUserId).length,
     waiting: tasks.filter(t => t.waitingDays != null && !t.snoozed).length,
   }
 
@@ -89,14 +112,21 @@ export default function App() {
         id: `t-new-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
         projectId: null, dueDate: null, askedDate: null, waitingOn: null, blocks: null,
         chasedCount: 0, cold: false, column: 'backlog', status: 'open', progress: null, note: null, done: false,
-        ownerType: 'team', priority: 'Med',
+        ownerType: 'team', priority: 'Med', assignedBy: currentUserId,
         ...draft,
       }],
     }))
   }
 
   function updateTask(id, patch) {
-    setState(s => ({ ...s, tasks: s.tasks.map(t => (t.id === id ? { ...t, ...patch } : t)) }))
+    setState(s => ({
+      ...s,
+      tasks: s.tasks.map(t => {
+        if (t.id !== id) return t
+        const reassigned = 'owner' in patch && patch.owner !== t.owner
+        return { ...t, ...patch, ...(reassigned ? { assignedBy: currentUserId } : {}) }
+      }),
+    }))
   }
 
   function deleteTask(id) {
@@ -211,9 +241,38 @@ export default function App() {
     setState(s => ({ ...s, team: s.team.filter(m => m.id !== id) }))
   }
 
+  function logout() {
+    setCurrentUserId(null)
+  }
+
+  // ---- files ----
+  function addFilesToClient(clientId, newFiles) {
+    setState(s => ({
+      ...s,
+      clients: s.clients.map(c => (c.id === clientId ? { ...c, files: [...(c.files || []), ...newFiles] } : c)),
+    }))
+  }
+
+  function deleteFile(clientId, fileId) {
+    setState(s => ({
+      ...s,
+      clients: s.clients.map(c => (c.id === clientId ? { ...c, files: (c.files || []).filter(f => f.id !== fileId) } : c)),
+    }))
+  }
+
   const activeCheckIn = activeClient
     ? [...checkins].reverse().find(c => c.clientId === activeClient.id && c.status === 'draft') || null
     : null
+
+  if (!currentUser) {
+    return (
+      <Login
+        team={team}
+        onSelect={setCurrentUserId}
+        onCreateAndSelect={m => { saveTeamMember(m); setCurrentUserId(m.id) }}
+      />
+    )
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -224,6 +283,9 @@ export default function App() {
         activeClientId={activeClientId}
         counts={counts}
         team={team}
+        currentUser={currentUser}
+        saveStatus={saveStatus}
+        onLogout={logout}
         onAddTeamMember={() => setTeamModal({ isNew: true, data: null })}
         onEditTeamMember={m => setTeamModal({ isNew: false, data: m })}
         onDeleteTeamMember={m => {
@@ -235,7 +297,7 @@ export default function App() {
         <Home
           clients={clients}
           tasks={tasks}
-          currentUserName={team[0]?.name || 'there'}
+          currentUserName={currentUser.name}
           onOpenClient={openClient}
           onNavigate={navigate}
           onEditClient={c => setClientModal({ isNew: false, data: c })}
@@ -255,7 +317,10 @@ export default function App() {
           projects={projects}
           checkins={checkins}
           team={team}
+          currentUser={currentUser}
           onUpdateClient={updateClient}
+          onAddFiles={files => addFilesToClient(activeClient.id, files)}
+          onDeleteFile={fileId => { if (window.confirm('Delete this file?')) deleteFile(activeClient.id, fileId) }}
           onEditClient={() => setClientModal({ isNew: false, data: activeClient })}
           onDeleteClient={() => {
             if (window.confirm(`Delete ${activeClient.name}? This removes all its projects, tasks and check-ins.`)) deleteClient(activeClient.id)
@@ -317,7 +382,7 @@ export default function App() {
       )}
 
       {view === 'checkin' && activeClient && (
-        <CheckIn client={activeClient} team={team} checkin={activeCheckIn} onSave={saveCheckIn} onSendToClient={() => navigate('checkins')} />
+        <CheckIn client={activeClient} team={team} tasks={tasks} currentUser={currentUser} checkin={activeCheckIn} onSave={saveCheckIn} onSendToClient={() => navigate('checkins')} />
       )}
 
       {view === 'checkins' && (
