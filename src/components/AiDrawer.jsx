@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { COLORS, FONT_MONO } from '../theme.js'
+import { relativeDayLabel } from '../dates.js'
 
 const SHORTCUTS = ['LinkedIn post', 'Chase email', 'Next actions', 'Check-in summary']
 
@@ -49,7 +50,8 @@ function buildReply(promptRaw, client, tasks) {
     ]
   }
 
-  return [client.narrative.text, `Want me to draft a chase, suggest next actions, or summarise this for the ${client.nextCheckIn} check-in?`]
+  const nextCheckIn = client.nextCheckInDate ? relativeDayLabel(client.nextCheckInDate) : 'next'
+  return [client.narrative.text, `Want me to draft a chase, suggest next actions, or summarise this for the ${nextCheckIn} check-in?`]
 }
 
 export default function AiDrawer({ open, client, tasks, initialPrompt, nonce, onClose }) {

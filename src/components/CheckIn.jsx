@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { COLORS, FONT_MONO } from '../theme.js'
-import { Button, teamName } from './ui.jsx'
+import { todayISO } from '../dates.js'
+import { Button, teamName, inputStyle } from './ui.jsx'
 
 function EditableList({ items, onChange, placeholder, color }) {
   const [draft, setDraft] = useState('')
@@ -26,6 +27,7 @@ function EditableList({ items, onChange, placeholder, color }) {
 }
 
 export default function CheckIn({ client, team, checkin, onSave, onSendToClient }) {
+  const [weekStart, setWeekStart] = useState(checkin?.weekStart || todayISO())
   const [wentOut, setWentOut] = useState(checkin?.wentOut || [])
   const [cameIn, setCameIn] = useState(checkin?.cameIn || [])
   const [outstanding, setOutstanding] = useState(checkin?.outstanding || [])
@@ -36,7 +38,7 @@ export default function CheckIn({ client, team, checkin, onSave, onSendToClient 
     onSave({
       id: checkin?.id || `ci-${client.id}-${Date.now() % 100000}`,
       clientId: client.id,
-      week: checkin?.week || `Week of ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}`,
+      weekStart,
       status,
       wentOut, cameIn, outstanding, nextPriority, notes,
     })
@@ -46,8 +48,9 @@ export default function CheckIn({ client, team, checkin, onSave, onSendToClient 
     <main style={{ background: COLORS.page, color: COLORS.heading, minHeight: '100%', padding: '28px 30px', display: 'flex', flexDirection: 'column', gap: 18, flex: 1, minWidth: 0, maxWidth: 760 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ font: `500 10px ${FONT_MONO}`, letterSpacing: '.10em', color: COLORS.textFaint }}>
-            {client.name.toUpperCase()} · {checkin?.week ? checkin.week.toUpperCase() : 'THIS WEEK'}
+          <div style={{ font: `500 10px ${FONT_MONO}`, letterSpacing: '.10em', color: COLORS.textFaint, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {client.name.toUpperCase()} · WEEK OF
+            <input type="date" value={weekStart} onChange={e => setWeekStart(e.target.value)} style={{ ...inputStyle, width: 140, padding: '3px 6px', font: `500 10px ${FONT_MONO}`, letterSpacing: '.05em' }} />
           </div>
           <h1 style={{ margin: '6px 0 0', font: "400 30px/1 'Instrument Serif',serif" }}>Check-in</h1>
         </div>

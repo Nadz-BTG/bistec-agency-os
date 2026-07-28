@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { COLORS } from '../theme.js'
+import { STAGES } from '../constants.js'
+import { todayISO } from '../dates.js'
 import { Button } from './ui.jsx'
-
-const STAGES = ['Discovery', 'Strategy', 'Delivery', 'Ongoing']
 
 function slug(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 24) || `client${Date.now() % 100000}`
@@ -47,9 +47,8 @@ export default function AddClientWizard({ team, onCreate, onCancel }) {
       tagline: basics.tagline || 'New engagement',
       stage: basics.stage.toUpperCase(),
       lead: basics.lead,
-      started: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }),
-      nextCheckIn: 'TBC',
-      lastCheckIn: null,
+      started: todayISO(),
+      nextCheckInDate: null,
       brief: source || 'No brief captured yet.',
       icps: read.icps,
       positioning: read.positioning || 'Positioning draft pending.',

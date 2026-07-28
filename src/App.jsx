@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CLIENTS, PROJECTS, TASKS, CHECKINS, TEAM } from './data.js'
+import { dueLabelFor, overdueDaysFor, waitingDaysFor } from './dates.js'
 import Sidebar from './components/Sidebar.jsx'
 import Home from './components/Home.jsx'
 import ClientWorkspace from './components/ClientWorkspace.jsx'
@@ -38,7 +39,13 @@ export default function App() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) } catch { /* storage unavailable */ }
   }, [state])
 
-  const { clients, projects, tasks, checkins, team } = state
+  const { clients, projects, checkins, team } = state
+  const tasks = state.tasks.map(t => ({
+    ...t,
+    due: dueLabelFor(t),
+    overdueDays: overdueDaysFor(t),
+    waitingDays: waitingDaysFor(t),
+  }))
   const activeClient = clients.find(c => c.id === activeClientId) || null
 
   const counts = {
@@ -80,9 +87,9 @@ export default function App() {
       ...s,
       tasks: [...s.tasks, {
         id: `t-new-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
-        projectId: null, overdueDays: null, waitingDays: null, waitingOn: null, blocks: null,
+        projectId: null, dueDate: null, askedDate: null, waitingOn: null, blocks: null,
         chasedCount: 0, cold: false, column: 'backlog', status: 'open', progress: null, note: null, done: false,
-        ownerType: 'team', priority: 'Med', due: '',
+        ownerType: 'team', priority: 'Med',
         ...draft,
       }],
     }))
@@ -154,7 +161,7 @@ export default function App() {
       clients: [...s.clients, client],
       projects: [...s.projects, ...newProjects],
       tasks: [...s.tasks, ...newTasks.map((t, i) => ({
-        id: `t-${client.id}-${i}-${Date.now()}`, overdueDays: null, waitingDays: null, waitingOn: null, blocks: null,
+        id: `t-${client.id}-${i}-${Date.now()}`, dueDate: null, askedDate: null, waitingOn: null, blocks: null,
         chasedCount: 0, cold: false, status: 'open', progress: null, note: null, done: false, ownerType: 'team', ...t,
       }))],
     }))

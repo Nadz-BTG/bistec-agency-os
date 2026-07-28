@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { COLORS, FONT_MONO } from '../theme.js'
 import { StageBadge, Avatar, ProgressBar, EditableField, Checkbox, Button, EditDeleteIcons, teamName } from './ui.jsx'
+import { formatDate, relativeDayLabel } from '../dates.js'
 
 const TABS = ['Overview', 'Projects', 'Tasks', 'Check-ins', 'Files']
 
@@ -52,7 +53,7 @@ export default function ClientWorkspace({
             <StageBadge stage={client.stage} />
           </div>
           <p style={{ margin: '8px 0 0', fontSize: 13.5, color: COLORS.textMuted }}>
-            Retainer · started {client.started} · account lead <strong style={{ color: COLORS.heading }}>{teamName(team, client.lead)}</strong> · next check-in {client.nextCheckIn}
+            Retainer · started {formatDate(client.started)} · account lead <strong style={{ color: COLORS.heading }}>{teamName(team, client.lead)}</strong> · next check-in {client.nextCheckInDate ? relativeDayLabel(client.nextCheckInDate) : 'TBC'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -262,7 +263,7 @@ export default function ClientWorkspace({
           {clientCheckins.map(ci => (
             <div key={ci.id} onClick={() => onOpenCheckIn(client.id)} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '14px 18px', cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{ci.week}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>Week of {formatDate(ci.weekStart)}</div>
                 <span style={{ fontSize: 11.5, color: ci.status === 'draft' ? COLORS.amberDark : COLORS.blue }}>{ci.status === 'draft' ? 'Draft' : 'Sent'}</span>
               </div>
               <div style={{ fontSize: 12.5, color: COLORS.textMuted, marginTop: 6 }}>{ci.nextPriority}</div>

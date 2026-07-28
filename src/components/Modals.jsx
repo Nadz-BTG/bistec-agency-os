@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { COLORS } from '../theme.js'
-import { AVATAR_SWATCHES } from '../theme.js'
+import { COLORS, AVATAR_SWATCHES } from '../theme.js'
+import { STAGES, PRIORITIES, PROJECT_STATUSES, OWNER_TYPES, TASK_COLUMNS, TEAM_ROLES } from '../constants.js'
+import { todayISO } from '../dates.js'
 import { Modal, Field, Button, TagListEditor, IconButton, inputStyle, textareaStyle } from './ui.jsx'
 import { Trash2 } from 'lucide-react'
-
-const STAGES = ['Discovery', 'Strategy', 'Delivery', 'Ongoing']
 
 function pillStyle(active) {
   return {
@@ -20,7 +19,7 @@ function slugify(name, fallbackPrefix) {
 
 export function EditClientModal({ client, isNew, team, onSave, onClose }) {
   const [form, setForm] = useState(client || {
-    name: '', tagline: '', stage: 'DISCOVERY', lead: team[0]?.id || '', started: '', nextCheckIn: 'TBC',
+    name: '', tagline: '', stage: 'DISCOVERY', lead: team[0]?.id || '', started: todayISO(), nextCheckInDate: null,
     brief: '', positioning: '', icps: [], neverSay: [], contacts: [],
     narrative: { text: 'Workspace just created — nothing logged yet.', updatedAgo: 'just now' },
     stageProgress: ['current', 'empty', 'empty', 'empty', 'empty'],
@@ -65,8 +64,8 @@ export function EditClientModal({ client, isNew, team, onSave, onClose }) {
         </div>
       </Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="Started"><input style={inputStyle} value={form.started || ''} onChange={e => set({ started: e.target.value })} /></Field>
-        <Field label="Next check-in"><input style={inputStyle} value={form.nextCheckIn || ''} onChange={e => set({ nextCheckIn: e.target.value })} /></Field>
+        <Field label="Started"><input type="date" style={inputStyle} value={form.started || ''} max={todayISO()} onChange={e => set({ started: e.target.value })} /></Field>
+        <Field label="Next check-in" hint="(optional)"><input type="date" style={inputStyle} value={form.nextCheckInDate || ''} onChange={e => set({ nextCheckInDate: e.target.value || null })} /></Field>
       </div>
       <Field label="Brief"><textarea rows={3} style={textareaStyle} value={form.brief} onChange={e => set({ brief: e.target.value })} /></Field>
       <Field label="Positioning"><textarea rows={2} style={textareaStyle} value={form.positioning} onChange={e => set({ positioning: e.target.value })} /></Field>
@@ -96,6 +95,7 @@ export function EditTeamMemberModal({ member, isNew, onSave, onClose }) {
   const [form, setForm] = useState(member || {
     name: '', initials: '', role: '', color: AVATAR_SWATCHES[0].color, textColor: AVATAR_SWATCHES[0].textColor,
   })
+  const [useCustomRole, setUseCustomRole] = useState(!!form.role && !TEAM_ROLES.includes(form.role))
   function set(patch) { setForm(f => ({ ...f, ...patch })) }
   function save() {
     const initials = form.initials || form.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
@@ -109,7 +109,19 @@ export function EditTeamMemberModal({ member, isNew, onSave, onClose }) {
       <Field label="Initials" hint="(auto if left blank)">
         <input style={inputStyle} value={form.initials} onChange={e => set({ initials: e.target.value.toUpperCase().slice(0, 2) })} maxLength={2} />
       </Field>
-      <Field label="Role"><input style={inputStyle} value={form.role} onChange={e => set({ role: e.target.value })} placeholder="e.g. account lead" /></Field>
+      <Field label="Role">
+        <select style={inputStyle} value={useCustomRole ? '__custom__' : (form.role || '')} onChange={e => {
+          if (e.target.value === '__custom__') { setUseCustomRole(true); set({ role: '' }) }
+          else { setUseCustomRole(false); set({ role: e.target.value }) }
+        }}>
+          <option value="" disabled>Select a role…</option>
+          {TEAM_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+          <option value="__custom__">Other…</option>
+        </select>
+        {useCustomRole && (
+          <input style={{ ...inputStyle, marginTop: 6 }} value={form.role} onChange={e => set({ role: e.target.value })} placeholder="Custom role" autoFocus />
+        )}
+      </Field>
       <Field label="Colour">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {AVATAR_SWATCHES.map(sw => (
@@ -152,7 +164,7 @@ export function EditProjectModal({ project, isNew, team, onSave, onClose }) {
       </div>
       <Field label="Status">
         <div style={{ display: 'flex', gap: 6 }}>
-          {['active', 'blocked', 'done'].map(s => (
+          {PROJECT_STATUSES.map(s => (
             <span key={s} onClick={() => set({ status: s })} style={pillStyle(form.status === s)}>{s}</span>
           ))}
         </div>
@@ -166,31 +178,53 @@ export function EditProjectModal({ project, isNew, team, onSave, onClose }) {
   )
 }
 
+const OTHER_CONTACT = '__other__'
+
 export function EditTaskModal({ task, isNew, clients, projects, team, fixedClientId, fixedProjectId, onSave, onClose }) {
   const [form, setForm] = useState(task || {
     title: '', clientId: fixedClientId || clients[0]?.id || '', projectId: fixedProjectId || null,
-    ownerType: 'team', owner: team[0]?.id || '', priority: 'Med', due: '', column: 'backlog',
-    waitingDays: '', waitingOn: '', blocks: '', note: '',
+    ownerType: 'team', owner: team[0]?.id || '', priority: 'Med', dueDate: null, column: 'backlog',
+    askedDate: null, waitingOn: '', blocks: '', chasedCount: 0, cold: false, note: '',
   })
   function set(patch) { setForm(f => ({ ...f, ...patch })) }
+  const selectedClient = clients.find(c => c.id === form.clientId)
+  const clientContacts = selectedClient?.contacts || []
   const clientProjects = projects.filter(p => p.clientId === form.clientId)
+  const isWaiting = !!form.askedDate
+  const [useOtherContact, setUseOtherContact] = useState(
+    !!form.waitingOn && !clientContacts.some(c => c.name === form.waitingOn)
+  )
+
+  function toggleWaiting(on) {
+    if (on) {
+      setUseOtherContact(false)
+      set({ askedDate: todayISO(), waitingOn: form.waitingOn || clientContacts[0]?.name || '' })
+    } else {
+      set({ askedDate: null, waitingOn: '', blocks: '', chasedCount: 0, cold: false })
+    }
+  }
+
   function save() {
     onSave({
       ...form,
-      waitingDays: form.waitingDays === '' || form.waitingDays == null ? null : Number(form.waitingDays),
-      waitingOn: form.waitingOn || null,
-      blocks: form.blocks || null,
+      waitingOn: isWaiting ? (form.waitingOn || null) : null,
+      blocks: isWaiting ? (form.blocks || null) : null,
+      chasedCount: isWaiting ? Number(form.chasedCount) || 0 : 0,
+      cold: isWaiting ? !!form.cold : false,
+      askedDate: isWaiting ? form.askedDate : null,
       note: form.note || null,
       projectId: form.projectId || null,
+      dueDate: form.dueDate || null,
     })
     onClose()
   }
+
   return (
     <Modal title={isNew ? 'Add task' : 'Edit task'} onClose={onClose} width={500}>
       <Field label="Title"><input style={inputStyle} value={form.title} onChange={e => set({ title: e.target.value })} autoFocus /></Field>
       {!fixedClientId && (
         <Field label="Client">
-          <select style={inputStyle} value={form.clientId} onChange={e => set({ clientId: e.target.value, projectId: null })}>
+          <select style={inputStyle} value={form.clientId} onChange={e => set({ clientId: e.target.value, projectId: null, waitingOn: '' })}>
             {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </Field>
@@ -204,9 +238,7 @@ export function EditTaskModal({ task, isNew, clients, projects, team, fixedClien
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Owner type">
           <select style={inputStyle} value={form.ownerType} onChange={e => set({ ownerType: e.target.value, owner: e.target.value === 'team' ? (team[0]?.id || '') : '' })}>
-            <option value="team">Team</option>
-            <option value="client">Client contact</option>
-            <option value="external">External</option>
+            {OWNER_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </Field>
         <Field label="Owner">
@@ -223,25 +255,58 @@ export function EditTaskModal({ task, isNew, clients, projects, team, fixedClien
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
         <Field label="Priority">
           <select style={inputStyle} value={form.priority} onChange={e => set({ priority: e.target.value })}>
-            <option>High</option><option>Med</option><option>Low</option>
+            {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         </Field>
-        <Field label="Due" hint="(free text)"><input style={inputStyle} value={form.due || ''} onChange={e => set({ due: e.target.value })} placeholder="e.g. Fri" /></Field>
+        <Field label="Due date" hint="(optional)"><input type="date" style={inputStyle} value={form.dueDate || ''} onChange={e => set({ dueDate: e.target.value || null })} /></Field>
         <Field label="Board column">
           <select style={inputStyle} value={form.column} onChange={e => set({ column: e.target.value })}>
-            <option value="backlog">Backlog</option>
-            <option value="drafting">Drafting</option>
-            <option value="with_client">With client</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="live">Live</option>
+            {TASK_COLUMNS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
         </Field>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="Waiting on" hint="(client contact, if any)"><input style={inputStyle} value={form.waitingOn || ''} onChange={e => set({ waitingOn: e.target.value })} /></Field>
-        <Field label="Waiting days" hint="(if applicable)"><input type="number" min={0} style={inputStyle} value={form.waitingDays == null ? '' : form.waitingDays} onChange={e => set({ waitingDays: e.target.value })} /></Field>
-      </div>
-      <Field label="Blocks" hint="(optional)"><input style={inputStyle} value={form.blocks || ''} onChange={e => set({ blocks: e.target.value })} placeholder="e.g. blocks 4 tasks" /></Field>
+
+      <Field label="Waiting on a client reply?">
+        <div style={{ display: 'flex', gap: 6 }}>
+          <span onClick={() => toggleWaiting(true)} style={pillStyle(isWaiting)}>Yes</span>
+          <span onClick={() => toggleWaiting(false)} style={pillStyle(!isWaiting)}>No</span>
+        </div>
+      </Field>
+
+      {isWaiting && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Asked on"><input type="date" style={inputStyle} value={form.askedDate || ''} max={todayISO()} onChange={e => set({ askedDate: e.target.value })} /></Field>
+            <Field label="Times chased"><input type="number" min={0} style={inputStyle} value={form.chasedCount || 0} onChange={e => set({ chasedCount: e.target.value })} /></Field>
+          </div>
+          <Field label="Waiting on">
+            {clientContacts.length > 0 ? (
+              <>
+                <select style={inputStyle} value={useOtherContact ? OTHER_CONTACT : form.waitingOn} onChange={e => {
+                  if (e.target.value === OTHER_CONTACT) { setUseOtherContact(true); set({ waitingOn: '' }) }
+                  else { setUseOtherContact(false); set({ waitingOn: e.target.value }) }
+                }}>
+                  {clientContacts.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  <option value={OTHER_CONTACT}>Someone else…</option>
+                </select>
+                {useOtherContact && (
+                  <input style={{ ...inputStyle, marginTop: 6 }} value={form.waitingOn} onChange={e => set({ waitingOn: e.target.value })} placeholder="Name" autoFocus />
+                )}
+              </>
+            ) : (
+              <input style={inputStyle} value={form.waitingOn} onChange={e => set({ waitingOn: e.target.value })} placeholder="Contact name" />
+            )}
+          </Field>
+          <Field label="Blocks" hint="(optional)"><input style={inputStyle} value={form.blocks || ''} onChange={e => set({ blocks: e.target.value })} placeholder="e.g. blocks 4 tasks" /></Field>
+          <Field>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: COLORS.text, cursor: 'pointer' }}>
+              <input type="checkbox" checked={!!form.cold} onChange={e => set({ cold: e.target.checked })} />
+              Flag as gone cold
+            </label>
+          </Field>
+        </>
+      )}
+
       <Field label="Note" hint="(optional)"><input style={inputStyle} value={form.note || ''} onChange={e => set({ note: e.target.value })} placeholder="e.g. Claude draft ready" /></Field>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
         <Button variant="outline" onClick={onClose}>Cancel</Button>

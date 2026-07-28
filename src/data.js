@@ -1,9 +1,13 @@
 // Seed data for the Agency OS prototype. Fictional sample content for one
 // worked example client — everything else starts empty for real use.
+// Dates are computed relative to "today" so the overdue/waiting states in
+// this seed still read correctly whenever the app is first opened.
+
+import { daysAgo, daysFromNow, nextWeekdayISO, todayISO } from './dates.js'
 
 export const TEAM = [
-  { id: 'nadha', name: 'Nadha', initials: 'NP', role: 'account lead', color: '#F58021', textColor: '#0B1D3E' },
-  { id: 'dilni', name: 'Dilni', initials: 'DL', role: 'strategist', color: '#006FB9', textColor: '#fff' },
+  { id: 'nadha', name: 'Nadha', initials: 'NP', role: 'Account lead', color: '#F58021', textColor: '#0B1D3E' },
+  { id: 'dilni', name: 'Dilni', initials: 'DL', role: 'Strategist', color: '#006FB9', textColor: '#fff' },
 ]
 
 export const CLIENTS = [
@@ -13,9 +17,8 @@ export const CLIENTS = [
     tagline: 'Strategy + LinkedIn build',
     stage: 'DELIVERY',
     lead: 'nadha',
-    started: '12 May',
-    nextCheckIn: 'Fri',
-    lastCheckIn: 'Fri 25 July',
+    started: daysAgo(77),
+    nextCheckInDate: nextWeekdayISO('Fri'),
     brief: 'Commercial solar & battery for mid-market industrial sites. Selling into ops directors who care about downtime, not carbon.',
     icps: ['Ops director, manufacturing', 'Facilities lead, cold chain', 'CFO, 50–250 staff'],
     positioning: 'Energy independence without an engineering department.',
@@ -45,9 +48,8 @@ function t(fields) {
     id: `t-${taskSeq}`,
     projectId: null,
     priority: 'Med',
-    due: null,
-    overdueDays: null,
-    waitingDays: null,
+    dueDate: null,
+    askedDate: null,
     waitingOn: null,
     blocks: null,
     chasedCount: 0,
@@ -62,26 +64,26 @@ function t(fields) {
 }
 
 export const TASKS = [
-  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Review post 4 — "The downtime maths"', owner: 'Marcus', ownerType: 'client', priority: 'High', overdueDays: 3, waitingOn: 'Marcus', blocks: "Marcus's sign-off", chasedCount: 1, column: 'with_client', progress: 70, due: '3d overdue' }),
-  t({ clientId: '6020energy', projectId: 'p-6020-cs', title: 'Site contacts for case study interviews', owner: 'Jo', ownerType: 'client', priority: 'High', waitingDays: 9, waitingOn: 'Jo', blocks: 'blocks 4 tasks', chasedCount: 1, column: 'with_client', due: 'waiting 9d' }),
-  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Draft August content calendar', owner: 'nadha', ownerType: 'team', priority: 'Med', due: 'Fri', column: 'drafting', note: 'Claude draft ready' }),
-  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Post 5 — "The downtime cost nobody models"', owner: 'nadha', ownerType: 'team', priority: 'Med', due: 'Wed', column: 'drafting', note: 'Claude draft ready' }),
-  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Schedule posts 1–3 in Buffer', owner: 'dilni', ownerType: 'team', priority: 'Low', due: 'Wed', column: 'drafting' }),
-  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Rewrite company page boilerplate', owner: 'nadha', ownerType: 'team', priority: 'Low', due: '1 Aug', column: 'backlog' }),
-  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Employee advocacy one-pager', owner: 'dilni', ownerType: 'team', priority: 'Low', due: null, column: 'backlog' }),
-  t({ clientId: '6020energy', projectId: 'p-6020-cs', title: 'Headshots for team profiles', owner: 'Jo', ownerType: 'client', priority: 'Med', waitingDays: 6, column: 'with_client', due: '6d' }),
+  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Review post 4 — "The downtime maths"', owner: 'Marcus Kelly', ownerType: 'client', priority: 'High', dueDate: daysAgo(3), waitingOn: 'Marcus Kelly', blocks: "Marcus's sign-off", chasedCount: 1, column: 'with_client', progress: 70 }),
+  t({ clientId: '6020energy', projectId: 'p-6020-cs', title: 'Site contacts for case study interviews', owner: 'Jo Raines', ownerType: 'client', priority: 'High', askedDate: daysAgo(9), waitingOn: 'Jo Raines', blocks: 'blocks 4 tasks', chasedCount: 1, column: 'with_client' }),
+  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Draft August content calendar', owner: 'nadha', ownerType: 'team', priority: 'Med', dueDate: nextWeekdayISO('Fri'), column: 'drafting', note: 'Claude draft ready' }),
+  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Post 5 — "The downtime cost nobody models"', owner: 'nadha', ownerType: 'team', priority: 'Med', dueDate: nextWeekdayISO('Wed'), column: 'drafting', note: 'Claude draft ready' }),
+  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Schedule posts 1–3 in Buffer', owner: 'dilni', ownerType: 'team', priority: 'Low', dueDate: nextWeekdayISO('Wed'), column: 'drafting' }),
+  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Rewrite company page boilerplate', owner: 'nadha', ownerType: 'team', priority: 'Low', dueDate: daysFromNow(4), column: 'backlog' }),
+  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Employee advocacy one-pager', owner: 'dilni', ownerType: 'team', priority: 'Low', column: 'backlog' }),
+  t({ clientId: '6020energy', projectId: 'p-6020-cs', title: 'Headshots for team profiles', owner: 'Jo Raines', ownerType: 'client', priority: 'Med', askedDate: daysAgo(6), waitingOn: 'Jo Raines', column: 'with_client' }),
   t({ clientId: '6020energy', projectId: 'p-6020-cs', title: 'Interview #1 — Ballarat cold store', owner: 'nadha', ownerType: 'team', priority: 'Med', column: 'backlog', note: 'blocked on site contacts' }),
-  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Posts 1–3 queued in Buffer', owner: 'dilni', ownerType: 'team', priority: 'Low', due: '29 Jul', column: 'scheduled' }),
+  t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Posts 1–3 queued in Buffer', owner: 'dilni', ownerType: 'team', priority: 'Low', dueDate: daysFromNow(1), column: 'scheduled' }),
   t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Marcus profile rewrite', owner: 'nadha', ownerType: 'team', column: 'live', status: 'live', note: 'Live 22 Jul · 41 reactions' }),
   t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Post 1 — "Why we stopped selling panels"', owner: 'nadha', ownerType: 'team', column: 'live', status: 'live', note: 'Live 18 Jul · 2 inbound' }),
-  t({ clientId: '6020energy', projectId: 'p-6020-cs', title: 'Photographer quote — Ballarat site', owner: 'Ravi', ownerType: 'external', priority: 'Low', due: '4 Aug', column: 'backlog' }),
+  t({ clientId: '6020energy', projectId: 'p-6020-cs', title: 'Photographer quote — Ballarat site', owner: 'Ravi', ownerType: 'external', priority: 'Low', dueDate: daysFromNow(7), column: 'backlog' }),
 ]
 
 export const CHECKINS = [
   {
     id: 'ci-6020-0728',
     clientId: '6020energy',
-    week: 'Week of 28 July',
+    weekStart: todayISO(),
     status: 'draft',
     wentOut: ['Posts 1–3 scheduled in Buffer', 'Marcus profile rewrite live — 41 reactions', 'Post 4 sent for review'],
     cameIn: ['Ballarat performance data from Marcus', 'Two inbound enquiries credited to post 1'],

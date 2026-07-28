@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { COLORS, FONT_MONO } from '../theme.js'
+import { TASK_COLUMNS } from '../constants.js'
 import { ProgressBar, Button, EditDeleteIcons, teamName } from './ui.jsx'
 
-const COLUMNS = [
-  { key: 'backlog', label: 'BACKLOG', color: COLORS.textMuted },
-  { key: 'drafting', label: 'DRAFTING', color: COLORS.textMuted },
-  { key: 'with_client', label: 'WITH CLIENT', color: COLORS.amberDark },
-  { key: 'scheduled', label: 'SCHEDULED', color: COLORS.textMuted },
-  { key: 'live', label: 'LIVE', color: COLORS.blueDark },
-]
+const COLUMN_COLOR = {
+  backlog: COLORS.textMuted,
+  drafting: COLORS.textMuted,
+  with_client: COLORS.amberDark,
+  scheduled: COLORS.textMuted,
+  live: COLORS.blueDark,
+}
+const COLUMNS = TASK_COLUMNS.map(c => ({ ...c, color: COLUMN_COLOR[c.key] }))
 
 function ownerBadge(t, team) {
   if (t.ownerType === 'team') return { label: teamName(team, t.owner).toUpperCase(), bg: '#EEF1F6', color: COLORS.textMuted }
@@ -57,7 +59,7 @@ export default function KanbanBoard({ client, projects, tasks, team, initialProj
           return (
             <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={() => drop(col.key)} style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', font: '600 11.5px "Instrument Sans",sans-serif', color: col.color, padding: '0 2px' }}>
-                <span>{col.label}</span><span>{colTasks.length}</span>
+                <span>{col.label.toUpperCase()}</span><span>{colTasks.length}</span>
               </div>
               {colTasks.map(t => {
                 const badge = ownerBadge(t, team)

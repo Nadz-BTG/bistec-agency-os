@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { COLORS } from '../theme.js'
+import { formatDate } from '../dates.js'
 import { Button, Checkbox, IconButton } from './ui.jsx'
 import { Trash2 } from 'lucide-react'
 
 export default function CheckinsHub({ clients, checkins, onOpenCheckIn, onDeleteCheckIn, onDeleteCheckIns }) {
   const [selected, setSelected] = useState(new Set())
-  const sorted = [...checkins].reverse()
+  const sorted = [...checkins].sort((a, b) => (a.weekStart < b.weekStart ? 1 : -1))
 
   function toggleOne(id) {
     setSelected(s => {
@@ -50,7 +51,7 @@ export default function CheckinsHub({ clients, checkins, onOpenCheckIn, onDelete
               <Checkbox checked={selected.has(ci.id)} onClick={() => toggleOne(ci.id)} />
               <div onClick={() => onOpenCheckIn(ci.clientId)} style={{ flex: 1, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{client.name} <span style={{ fontWeight: 400, color: COLORS.textFaint, fontSize: 12.5 }}>· {ci.week}</span></div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{client.name} <span style={{ fontWeight: 400, color: COLORS.textFaint, fontSize: 12.5 }}>· Week of {formatDate(ci.weekStart)}</span></div>
                   <div style={{ fontSize: 12.5, color: COLORS.textMuted, marginTop: 4, maxWidth: 560 }}>{ci.nextPriority}</div>
                 </div>
                 <span style={{ fontSize: 11.5, fontWeight: 600, color: ci.status === 'sent' ? COLORS.blueDark : COLORS.amberDark, flexShrink: 0 }}>{ci.status === 'sent' ? 'Sent' : 'Draft'}</span>
