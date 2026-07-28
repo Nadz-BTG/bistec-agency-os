@@ -1,5 +1,6 @@
-import { COLORS, FONT_MONO, TEAM } from '../theme.js'
-import { Avatar } from './ui.jsx'
+import { Plus } from 'lucide-react'
+import { COLORS, FONT_MONO } from '../theme.js'
+import { Avatar, EditDeleteIcons } from './ui.jsx'
 
 const NAV_ITEMS = [
   { key: 'home', label: 'Home' },
@@ -8,7 +9,10 @@ const NAV_ITEMS = [
   { key: 'checkins', label: 'Check-ins' },
 ]
 
-export default function Sidebar({ view, onNavigate, clients, activeClientId, counts }) {
+export default function Sidebar({
+  view, onNavigate, clients, activeClientId, counts, team,
+  onAddTeamMember, onEditTeamMember, onDeleteTeamMember,
+}) {
   return (
     <aside style={{
       background: COLORS.navy, color: '#EAF0F8', padding: '20px 16px',
@@ -54,6 +58,7 @@ export default function Sidebar({ view, onNavigate, clients, activeClientId, cou
               </div>
             )
           })}
+          {clients.length === 0 && <div style={{ padding: '6px 10px', fontSize: 11.5, color: '#8FA3C0', fontStyle: 'italic' }}>No clients yet</div>}
           <div onClick={() => onNavigate('add-client')} style={{ padding: '6px 10px', borderRadius: 6, cursor: 'pointer', color: '#8FA3C0', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 16, height: 16, borderRadius: '50%', border: '1px dashed rgba(255,255,255,.35)', display: 'grid', placeItems: 'center', fontSize: 11 }}>+</span>
             New client
@@ -63,14 +68,20 @@ export default function Sidebar({ view, onNavigate, clients, activeClientId, cou
 
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ font: `500 10px ${FONT_MONO}`, letterSpacing: '.09em', color: '#8FA3C0' }}>TEAM</div>
-        {TEAM.map(m => (
-          <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#EAF0F8' }}>
-            <Avatar name={m.name} initials={m.initials} size={24} />
-            {m.name} <span style={{ color: '#8FA3C0', fontSize: 11 }}>· {m.role}</span>
+        {team.map(m => (
+          <div key={m.id} className="team-row" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#EAF0F8' }}>
+            <Avatar name={m.name} initials={m.initials} team={team} size={24} />
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {m.name} <span style={{ color: '#8FA3C0', fontSize: 11 }}>· {m.role}</span>
+            </span>
+            <EditDeleteIcons light onEdit={() => onEditTeamMember(m)} onDelete={() => onDeleteTeamMember(m)} deleteTitle="Remove teammate" />
           </div>
         ))}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#8FA3C0' }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '1px dashed rgba(255,255,255,.28)', display: 'grid', placeItems: 'center', fontSize: 12 }}>+</div>
+        {team.length === 0 && <div style={{ fontSize: 11.5, color: '#8FA3C0', fontStyle: 'italic' }}>No teammates yet</div>}
+        <div onClick={onAddTeamMember} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#8FA3C0', cursor: 'pointer' }}>
+          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '1px dashed rgba(255,255,255,.28)', display: 'grid', placeItems: 'center' }}>
+            <Plus size={13} />
+          </div>
           Add teammate
         </div>
       </div>

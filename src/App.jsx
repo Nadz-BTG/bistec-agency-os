@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CLIENTS, PROJECTS, TASKS, CHECKINS } from './data.js'
+import { CLIENTS, PROJECTS, TASKS, CHECKINS, TEAM } from './data.js'
 import Sidebar from './components/Sidebar.jsx'
 import Home from './components/Home.jsx'
 import ClientWorkspace from './components/ClientWorkspace.jsx'
@@ -10,15 +10,16 @@ import AiDrawer from './components/AiDrawer.jsx'
 import AddClientWizard from './components/AddClientWizard.jsx'
 import CheckIn from './components/CheckIn.jsx'
 import CheckinsHub from './components/CheckinsHub.jsx'
+import { EditClientModal, EditTeamMemberModal, EditProjectModal, EditTaskModal } from './components/Modals.jsx'
 
-const STORAGE_KEY = 'agency-os-state-v1'
+const STORAGE_KEY = 'agency-os-state-v2'
 
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
   } catch { /* ignore corrupt storage */ }
-  return { clients: CLIENTS, projects: PROJECTS, tasks: TASKS, checkins: CHECKINS }
+  return { clients: CLIENTS, projects: PROJECTS, tasks: TASKS, checkins: CHECKINS, team: TEAM }
 }
 
 export default function App() {
@@ -28,15 +29,20 @@ export default function App() {
   const [activeProjectId, setActiveProjectId] = useState(null)
   const [aiDrawer, setAiDrawer] = useState({ open: false, clientId: null, initialPrompt: '', nonce: 0 })
 
+  const [clientModal, setClientModal] = useState(null) // { isNew, data }
+  const [teamModal, setTeamModal] = useState(null)
+  const [projectModal, setProjectModal] = useState(null) // { isNew, data, clientId }
+  const [taskModal, setTaskModal] = useState(null) // { isNew, data, fixedClientId, fixedProjectId }
+
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) } catch { /* storage unavailable */ }
   }, [state])
 
-  const { clients, projects, tasks, checkins } = state
+  const { clients, projects, tasks, checkins, team } = state
   const activeClient = clients.find(c => c.id === activeClientId) || null
 
   const counts = {
-    mine: tasks.filter(t => t.status === 'open' && t.ownerType === 'team' && t.owner === 'nadha').length,
+    mine: tasks.filter(t => t.status === 'open' && t.ownerType === 'team' && t.owner === team[0]?.id).length,
     waiting: tasks.filter(t => t.waitingDays != null && !t.snoozed).length,
   }
 
@@ -59,6 +65,7 @@ export default function App() {
   }
   function closeAiDrawer() { setAiDrawer(d => ({ ...d, open: false })) }
 
+  // ---- tasks ----
   function toggleTask(id) {
     setState(s => ({
       ...s,
@@ -68,65 +75,133 @@ export default function App() {
     }))
   }
 
-  function updateClient(id, patch) {
-    setState(s => ({ ...s, clients: s.clients.map(c => c.id === id ? { ...c, ...patch } : c) }))
-  }
-
   function addTask(draft) {
     setState(s => ({
       ...s,
       tasks: [...s.tasks, {
-        id: `t-new-${Date.now()}`,
-        projectId: null,
-        overdueDays: null,
-        waitingDays: null,
-        waitingOn: null,
-        blocks: null,
-        chasedCount: 0,
-        cold: false,
-        column: 'backlog',
-        status: 'open',
-        progress: null,
-        note: null,
-        done: false,
-        ownerType: 'team',
-        priority: 'Med',
-        due: '',
+        id: `t-new-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
+        projectId: null, overdueDays: null, waitingDays: null, waitingOn: null, blocks: null,
+        chasedCount: 0, cold: false, column: 'backlog', status: 'open', progress: null, note: null, done: false,
+        ownerType: 'team', priority: 'Med', due: '',
         ...draft,
       }],
     }))
   }
 
+  function updateTask(id, patch) {
+    setState(s => ({ ...s, tasks: s.tasks.map(t => (t.id === id ? { ...t, ...patch } : t)) }))
+  }
+
+  function deleteTask(id) {
+    setState(s => ({ ...s, tasks: s.tasks.filter(t => t.id !== id) }))
+  }
+
+  function deleteTasks(ids) {
+    const idSet = new Set(ids)
+    setState(s => ({ ...s, tasks: s.tasks.filter(t => !idSet.has(t.id)) }))
+  }
+
   function moveTask(id, column) {
-    setState(s => ({ ...s, tasks: s.tasks.map(t => t.id === id ? { ...t, column } : t) }))
+    setState(s => ({ ...s, tasks: s.tasks.map(t => (t.id === id ? { ...t, column } : t)) }))
   }
 
   function snoozeChase(id) {
-    setState(s => ({ ...s, tasks: s.tasks.map(t => t.id === id ? { ...t, snoozed: true } : t) }))
+    setState(s => ({ ...s, tasks: s.tasks.map(t => (t.id === id ? { ...t, snoozed: true } : t)) }))
   }
 
   function draftChase(clientId, taskTitle) {
     openAiDrawer(clientId, `Draft a chase for: ${taskTitle}`)
   }
 
-  function saveCheckIn(checkin) {
+  // ---- clients ----
+  function updateClient(id, patch) {
+    setState(s => ({ ...s, clients: s.clients.map(c => (c.id === id ? { ...c, ...patch } : c)) }))
+  }
+
+  function saveClient(clientData) {
     setState(s => {
-      const exists = s.checkins.some(c => c.id === checkin.id)
-      return { ...s, checkins: exists ? s.checkins.map(c => c.id === checkin.id ? checkin : c) : [...s.checkins, checkin] }
+      const exists = s.clients.some(c => c.id === clientData.id)
+      return { ...s, clients: exists ? s.clients.map(c => (c.id === clientData.id ? clientData : c)) : [...s.clients, clientData] }
     })
   }
 
-  function createClient({ client, projects: newProjects, tasks: newTasks }) {
+  function deleteClient(id) {
+    setState(s => ({
+      ...s,
+      clients: s.clients.filter(c => c.id !== id),
+      projects: s.projects.filter(p => p.clientId !== id),
+      tasks: s.tasks.filter(t => t.clientId !== id),
+      checkins: s.checkins.filter(ci => ci.clientId !== id),
+    }))
+    if (activeClientId === id) { setActiveClientId(null); navigate('home') }
+  }
+
+  function deleteClients(ids) {
+    const idSet = new Set(ids)
+    setState(s => ({
+      ...s,
+      clients: s.clients.filter(c => !idSet.has(c.id)),
+      projects: s.projects.filter(p => !idSet.has(p.clientId)),
+      tasks: s.tasks.filter(t => !idSet.has(t.clientId)),
+      checkins: s.checkins.filter(ci => !idSet.has(ci.clientId)),
+    }))
+    if (activeClientId && idSet.has(activeClientId)) { setActiveClientId(null); navigate('home') }
+  }
+
+  function createClientFromWizard({ client, projects: newProjects, tasks: newTasks }) {
     setState(s => ({
       ...s,
       clients: [...s.clients, client],
       projects: [...s.projects, ...newProjects],
       tasks: [...s.tasks, ...newTasks.map((t, i) => ({
-        id: `t-${client.id}-${i}`, overdueDays: null, waitingDays: null, waitingOn: null, blocks: null,
+        id: `t-${client.id}-${i}-${Date.now()}`, overdueDays: null, waitingDays: null, waitingOn: null, blocks: null,
         chasedCount: 0, cold: false, status: 'open', progress: null, note: null, done: false, ownerType: 'team', ...t,
       }))],
     }))
     navigate('client', client.id)
+  }
+
+  // ---- projects ----
+  function addProject(clientId, fields) {
+    const id = `p-${clientId}-${Date.now()}-${Math.round(Math.random() * 1e6)}`
+    setState(s => ({ ...s, projects: [...s.projects, { id, clientId, ...fields }] }))
+  }
+
+  function updateProject(id, patch) {
+    setState(s => ({ ...s, projects: s.projects.map(p => (p.id === id ? { ...p, ...patch } : p)) }))
+  }
+
+  function deleteProject(id) {
+    setState(s => ({ ...s, projects: s.projects.filter(p => p.id !== id), tasks: s.tasks.filter(t => t.projectId !== id) }))
+  }
+
+  // ---- check-ins ----
+  function saveCheckIn(checkin) {
+    setState(s => {
+      const exists = s.checkins.some(c => c.id === checkin.id)
+      return { ...s, checkins: exists ? s.checkins.map(c => (c.id === checkin.id ? checkin : c)) : [...s.checkins, checkin] }
+    })
+  }
+
+  function deleteCheckIn(id) {
+    setState(s => ({ ...s, checkins: s.checkins.filter(c => c.id !== id) }))
+  }
+
+  function deleteCheckIns(ids) {
+    const idSet = new Set(ids)
+    setState(s => ({ ...s, checkins: s.checkins.filter(c => !idSet.has(c.id)) }))
+  }
+
+  // ---- team ----
+  function saveTeamMember(memberData) {
+    setState(s => {
+      const exists = s.team.some(m => m.id === memberData.id)
+      return { ...s, team: exists ? s.team.map(m => (m.id === memberData.id ? memberData : m)) : [...s.team, memberData] }
+    })
+  }
+
+  function deleteTeamMember(id) {
+    setState(s => ({ ...s, team: s.team.filter(m => m.id !== id) }))
   }
 
   const activeCheckIn = activeClient
@@ -135,10 +210,35 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar view={view} onNavigate={navigate} clients={clients} activeClientId={activeClientId} counts={counts} />
+      <Sidebar
+        view={view}
+        onNavigate={navigate}
+        clients={clients}
+        activeClientId={activeClientId}
+        counts={counts}
+        team={team}
+        onAddTeamMember={() => setTeamModal({ isNew: true, data: null })}
+        onEditTeamMember={m => setTeamModal({ isNew: false, data: m })}
+        onDeleteTeamMember={m => {
+          if (window.confirm(`Remove ${m.name} from the team?`)) deleteTeamMember(m.id)
+        }}
+      />
 
       {view === 'home' && (
-        <Home clients={clients} tasks={tasks} currentUserName="Nadha" onOpenClient={openClient} onNavigate={navigate} />
+        <Home
+          clients={clients}
+          tasks={tasks}
+          currentUserName={team[0]?.name || 'there'}
+          onOpenClient={openClient}
+          onNavigate={navigate}
+          onEditClient={c => setClientModal({ isNew: false, data: c })}
+          onDeleteClient={c => {
+            if (window.confirm(`Delete ${c.name}? This removes all its projects, tasks and check-ins.`)) deleteClient(c.id)
+          }}
+          onDeleteClients={ids => {
+            if (window.confirm(`Delete ${ids.length} client(s) and all their projects, tasks and check-ins?`)) deleteClients(ids)
+          }}
+        />
       )}
 
       {view === 'client' && activeClient && (
@@ -147,36 +247,80 @@ export default function App() {
           tasks={tasks}
           projects={projects}
           checkins={checkins}
+          team={team}
           onUpdateClient={updateClient}
+          onEditClient={() => setClientModal({ isNew: false, data: activeClient })}
+          onDeleteClient={() => {
+            if (window.confirm(`Delete ${activeClient.name}? This removes all its projects, tasks and check-ins.`)) deleteClient(activeClient.id)
+          }}
           onToggleTask={toggleTask}
+          onEditTask={t => setTaskModal({ isNew: false, data: t })}
+          onDeleteTask={id => { if (window.confirm('Delete this task?')) deleteTask(id) }}
+          onDeleteTasks={ids => { if (window.confirm(`Delete ${ids.length} task(s)?`)) deleteTasks(ids) }}
+          onAddTask={clientId => setTaskModal({ isNew: true, data: null, fixedClientId: clientId })}
           onOpenAiDrawer={openAiDrawer}
           onOpenKanban={openKanban}
           onOpenCheckIn={openCheckIn}
+          onAddProject={clientId => setProjectModal({ isNew: true, data: null, clientId })}
+          onEditProject={p => setProjectModal({ isNew: false, data: p, clientId: p.clientId })}
+          onDeleteProject={p => { if (window.confirm(`Delete project "${p.name}" and its tasks?`)) deleteProject(p.id) }}
         />
       )}
 
       {view === 'tasks' && (
-        <TasksTable tasks={tasks} clients={clients} projects={projects} onToggleTask={toggleTask} onAddTask={addTask} />
+        <TasksTable
+          tasks={tasks}
+          clients={clients}
+          projects={projects}
+          team={team}
+          onToggleTask={toggleTask}
+          onAddTask={() => setTaskModal({ isNew: true, data: null })}
+          onEditTask={t => setTaskModal({ isNew: false, data: t })}
+          onDeleteTask={id => { if (window.confirm('Delete this task?')) deleteTask(id) }}
+          onDeleteTasks={ids => { if (window.confirm(`Delete ${ids.length} task(s)?`)) deleteTasks(ids) }}
+        />
       )}
 
       {view === 'chase' && (
-        <ChaseQueue tasks={tasks} clients={clients} onSnooze={snoozeChase} onDraftChase={draftChase} />
+        <ChaseQueue
+          tasks={tasks}
+          clients={clients}
+          onSnooze={snoozeChase}
+          onDraftChase={draftChase}
+          onDeleteTask={id => { if (window.confirm('Remove this from the chase queue? This deletes the task.')) deleteTask(id) }}
+        />
       )}
 
       {view === 'kanban' && activeClient && (
-        <KanbanBoard client={activeClient} projects={projects} tasks={tasks} initialProjectId={activeProjectId} onMoveTask={moveTask} onAddTask={addTask} />
+        <KanbanBoard
+          client={activeClient}
+          projects={projects}
+          tasks={tasks}
+          team={team}
+          initialProjectId={activeProjectId}
+          onMoveTask={moveTask}
+          onAddTask={(clientId, projectId) => setTaskModal({ isNew: true, data: null, fixedClientId: clientId, fixedProjectId: projectId })}
+          onEditTask={t => setTaskModal({ isNew: false, data: t })}
+          onDeleteTask={id => { if (window.confirm('Delete this task?')) deleteTask(id) }}
+        />
       )}
 
       {view === 'add-client' && (
-        <AddClientWizard onCreate={createClient} onCancel={() => navigate('home')} />
+        <AddClientWizard team={team} onCreate={createClientFromWizard} onCancel={() => navigate('home')} />
       )}
 
       {view === 'checkin' && activeClient && (
-        <CheckIn client={activeClient} checkin={activeCheckIn} onSave={saveCheckIn} onSendToClient={() => navigate('checkins')} />
+        <CheckIn client={activeClient} team={team} checkin={activeCheckIn} onSave={saveCheckIn} onSendToClient={() => navigate('checkins')} />
       )}
 
       {view === 'checkins' && (
-        <CheckinsHub clients={clients} checkins={checkins} onOpenCheckIn={openCheckIn} />
+        <CheckinsHub
+          clients={clients}
+          checkins={checkins}
+          onOpenCheckIn={openCheckIn}
+          onDeleteCheckIn={id => { if (window.confirm('Delete this check-in?')) deleteCheckIn(id) }}
+          onDeleteCheckIns={ids => { if (window.confirm(`Delete ${ids.length} check-in(s)?`)) deleteCheckIns(ids) }}
+        />
       )}
 
       <AiDrawer
@@ -187,6 +331,55 @@ export default function App() {
         nonce={aiDrawer.nonce}
         onClose={closeAiDrawer}
       />
+
+      {clientModal && (
+        <EditClientModal
+          client={clientModal.data}
+          isNew={clientModal.isNew}
+          team={team}
+          onSave={saveClient}
+          onClose={() => setClientModal(null)}
+        />
+      )}
+
+      {teamModal && (
+        <EditTeamMemberModal
+          member={teamModal.data}
+          isNew={teamModal.isNew}
+          onSave={saveTeamMember}
+          onClose={() => setTeamModal(null)}
+        />
+      )}
+
+      {projectModal && (
+        <EditProjectModal
+          project={projectModal.data}
+          isNew={projectModal.isNew}
+          team={team}
+          onSave={fields => {
+            if (projectModal.isNew) addProject(projectModal.clientId, fields)
+            else updateProject(projectModal.data.id, fields)
+          }}
+          onClose={() => setProjectModal(null)}
+        />
+      )}
+
+      {taskModal && (
+        <EditTaskModal
+          task={taskModal.data}
+          isNew={taskModal.isNew}
+          clients={clients}
+          projects={projects}
+          team={team}
+          fixedClientId={taskModal.fixedClientId}
+          fixedProjectId={taskModal.fixedProjectId}
+          onSave={fields => {
+            if (taskModal.isNew) addTask(fields)
+            else updateTask(taskModal.data.id, fields)
+          }}
+          onClose={() => setTaskModal(null)}
+        />
+      )}
     </div>
   )
 }

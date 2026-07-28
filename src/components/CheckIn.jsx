@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { COLORS, FONT_MONO } from '../theme.js'
-import { Button } from './ui.jsx'
+import { Button, teamName } from './ui.jsx'
 
 function EditableList({ items, onChange, placeholder, color }) {
   const [draft, setDraft] = useState('')
@@ -25,7 +25,7 @@ function EditableList({ items, onChange, placeholder, color }) {
   )
 }
 
-export default function CheckIn({ client, checkin, onSave, onSendToClient }) {
+export default function CheckIn({ client, team, checkin, onSave, onSendToClient }) {
   const [wentOut, setWentOut] = useState(checkin?.wentOut || [])
   const [cameIn, setCameIn] = useState(checkin?.cameIn || [])
   const [outstanding, setOutstanding] = useState(checkin?.outstanding || [])
@@ -83,7 +83,7 @@ export default function CheckIn({ client, checkin, onSave, onSendToClient }) {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', flexWrap: 'wrap', gap: 10 }}>
-        <span style={{ fontSize: 12, color: COLORS.textFaint }}>{client.lead === 'nadha' ? 'Dilni' : 'Nadha'} will see this in their Monday digest.</span>
+        <span style={{ fontSize: 12, color: COLORS.textFaint }}>{teamName(team, team.find(m => m.id !== client.lead)?.id || client.lead)} will see this in their Monday digest.</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="outline" onClick={() => { save('sent'); onSendToClient() }}>Send to client</Button>
           <Button variant="primary" onClick={() => save('draft')}>Save check-in</Button>

@@ -36,7 +36,13 @@ export const PRIORITY_COLOR = {
   Low: '#7C8BA1',
 }
 
-export const TEAM = [
-  { id: 'nadha', name: 'Nadha', initials: 'NP', role: 'account lead', color: '#F58021', textColor: '#0B1D3E' },
-  { id: 'dilni', name: 'Dilni', initials: 'DL', role: 'strategist', color: '#006FB9', textColor: '#fff' },
+export const AVATAR_SWATCHES = [
+  { color: '#F58021', textColor: '#0B1D3E' },
+  { color: '#006FB9', textColor: '#fff' },
+  { color: '#D96A0A', textColor: '#fff' },
+  { color: '#14377D', textColor: '#fff' },
+  { color: '#2E7D32', textColor: '#fff' },
+  { color: '#7B3FA0', textColor: '#fff' },
+  { color: '#B8790A', textColor: '#fff' },
+  { color: '#005A96', textColor: '#fff' },
 ]

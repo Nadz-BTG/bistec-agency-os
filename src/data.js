@@ -1,5 +1,10 @@
-// Mock data for the Agency OS prototype. Everything here is fictional sample content
-// modeled on the original design exploration — not real client data.
+// Seed data for the Agency OS prototype. Fictional sample content for one
+// worked example client — everything else starts empty for real use.
+
+export const TEAM = [
+  { id: 'nadha', name: 'Nadha', initials: 'NP', role: 'account lead', color: '#F58021', textColor: '#0B1D3E' },
+  { id: 'dilni', name: 'Dilni', initials: 'DL', role: 'strategist', color: '#006FB9', textColor: '#fff' },
+]
 
 export const CLIENTS = [
   {
@@ -25,106 +30,12 @@ export const CLIENTS = [
     },
     stageProgress: ['done', 'done', 'current', 'empty', 'empty'],
   },
-  {
-    id: 'drliz',
-    name: 'Dr Liz',
-    fullName: 'Dr Liz Harrow',
-    tagline: 'Personal brand + content programme',
-    stage: 'DISCOVERY',
-    lead: 'nadha',
-    started: '19 July',
-    nextCheckIn: 'TBC',
-    lastCheckIn: null,
-    brief: 'Consultant psychiatrist moving into corporate wellbeing advisory. Wants to be known for the "burnout is an operating model problem" argument, not generic wellness. Audience is HR directors and people-ops leads at 200–2000 person firms. Has 4k LinkedIn followers, posts twice a year.',
-    icps: ['HR director, 200–2000 staff', 'People-ops lead'],
-    positioning: 'Burnout as an operating-model failure, not an individual one.',
-    neverSay: ['thought leader'],
-    contacts: [
-      { name: 'Dr Liz Harrow', role: 'Founder · decision maker', initials: 'LH' },
-    ],
-    narrative: {
-      text: "Workshop done. Waiting on her ICP notes — 9 days. Chase drafted, not sent.",
-      updatedAgo: '1d ago',
-    },
-    stageProgress: ['current', 'empty', 'empty', 'empty', 'empty'],
-  },
-  {
-    id: 'harbourline',
-    name: 'Harbourline Legal',
-    tagline: 'Ongoing marketing ops',
-    stage: 'ONGOING',
-    lead: 'nadha',
-    started: '3 Feb',
-    nextCheckIn: 'Fri',
-    lastCheckIn: 'Fri 25 July',
-    brief: 'Mid-size commercial law firm. Monthly newsletter, LinkedIn presence and the occasional explainer piece for partners.',
-    icps: ['Ops/finance director, SME', 'GC, mid-market company'],
-    positioning: 'The firm that explains the law in plain English.',
-    neverSay: [],
-    contacts: [
-      { name: 'Aisha Fernando', role: 'Marketing manager', initials: 'AF' },
-    ],
-    narrative: {
-      text: 'July newsletter out Thursday. Nothing blocked. Check-in logged Friday.',
-      updatedAgo: '1d ago',
-    },
-    stageProgress: ['done', 'done', 'done', 'done', 'done'],
-  },
-  {
-    id: 'verity',
-    name: 'Verity Fintech',
-    tagline: 'Strategy sprint',
-    stage: 'STRATEGY',
-    lead: 'dilni',
-    started: '8 July',
-    nextCheckIn: '5 Aug',
-    lastCheckIn: null,
-    brief: 'B2B payments infrastructure for mid-market retailers. Needs a messaging house before any content work starts.',
-    icps: ['Head of payments, retail', 'CFO, mid-market retail'],
-    positioning: 'Draft in progress.',
-    neverSay: [],
-    contacts: [
-      { name: 'Sam Okafor', role: 'CMO', initials: 'SO' },
-    ],
-    narrative: {
-      text: 'Messaging house v2 with Dilni. Readout booked 5 Aug.',
-      updatedAgo: '3d ago',
-    },
-    stageProgress: ['done', 'done', 'empty', 'empty', 'empty'],
-  },
-  {
-    id: 'northmoor',
-    name: 'Northmoor Group',
-    tagline: 'Case study & testimonials',
-    stage: 'ONGOING',
-    lead: 'dilni',
-    started: '2 Jan',
-    nextCheckIn: 'Mon',
-    lastCheckIn: 'Mon 21 July',
-    brief: 'Industrial logistics group. Building a testimonial and case-study library off the back of a successful 2025 campaign.',
-    icps: ['Ops director, logistics', 'Supply chain lead'],
-    positioning: 'Proven at scale — the numbers do the talking.',
-    neverSay: [],
-    contacts: [
-      { name: 'Priya Nandakumar', role: 'Head of marketing', initials: 'PN' },
-    ],
-    narrative: {
-      text: 'Testimonial approval has stalled — chased twice, nothing back in three weeks. Everything else on track.',
-      updatedAgo: '4h ago',
-    },
-    stageProgress: ['done', 'done', 'done', 'current', 'empty'],
-  },
 ]
 
 export const PROJECTS = [
   { id: 'p-6020-li', clientId: '6020energy', name: 'LinkedIn build', owner: 'nadha', done: 6, total: 11, status: 'active', note: '2 overdue' },
   { id: 'p-6020-cs', clientId: '6020energy', name: 'Case study programme', owner: 'dilni', done: 1, total: 7, status: 'blocked', note: 'blocked' },
   { id: 'p-6020-strat', clientId: '6020energy', name: 'Strategy & positioning', owner: 'nadha', done: 1, total: 1, status: 'done', note: 'complete' },
-  { id: 'p-liz-disc', clientId: 'drliz', name: 'Discovery & positioning', owner: 'nadha', done: 2, total: 4, status: 'active', note: '2 waiting on Liz' },
-  { id: 'p-liz-li', clientId: 'drliz', name: 'LinkedIn presence', owner: 'nadha', done: 0, total: 3, status: 'active', note: 'starts after sign-off' },
-  { id: 'p-harb-ops', clientId: 'harbourline', name: 'Ongoing marketing ops', owner: 'nadha', done: 3, total: 3, status: 'active', note: 'on track' },
-  { id: 'p-verity-strat', clientId: 'verity', name: 'Strategy sprint', owner: 'dilni', done: 4, total: 6, status: 'active', note: 'readout 5 Aug' },
-  { id: 'p-north-cs', clientId: 'northmoor', name: 'Case study & testimonials', owner: 'dilni', done: 5, total: 8, status: 'blocked', note: 'blocked' },
 ]
 
 let taskSeq = 0
@@ -164,15 +75,6 @@ export const TASKS = [
   t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Marcus profile rewrite', owner: 'nadha', ownerType: 'team', column: 'live', status: 'live', note: 'Live 22 Jul · 41 reactions' }),
   t({ clientId: '6020energy', projectId: 'p-6020-li', title: 'Post 1 — "Why we stopped selling panels"', owner: 'nadha', ownerType: 'team', column: 'live', status: 'live', note: 'Live 18 Jul · 2 inbound' }),
   t({ clientId: '6020energy', projectId: 'p-6020-cs', title: 'Photographer quote — Ballarat site', owner: 'Ravi', ownerType: 'external', priority: 'Low', due: '4 Aug', column: 'backlog' }),
-
-  t({ clientId: 'drliz', projectId: 'p-liz-disc', title: 'ICP notes from workshop', owner: 'Dr Liz Harrow', ownerType: 'client', priority: 'Med', waitingDays: 9, waitingOn: 'Dr Liz Harrow', blocks: 'blocks the strategy doc', chasedCount: 0, column: 'with_client', due: 'waiting 9d' }),
-  t({ clientId: 'drliz', projectId: 'p-liz-li', title: 'Book brand photography day', owner: 'dilni', ownerType: 'team', priority: 'Low', due: '8 Aug', column: 'backlog' }),
-
-  t({ clientId: 'harbourline', projectId: 'p-harb-ops', title: 'July newsletter — final proof', owner: 'nadha', ownerType: 'team', priority: 'Med', due: 'Thu', column: 'drafting' }),
-
-  t({ clientId: 'verity', projectId: 'p-verity-strat', title: 'Messaging house v2', owner: 'dilni', ownerType: 'team', priority: 'High', due: 'Thu', column: 'drafting' }),
-
-  t({ clientId: 'northmoor', projectId: 'p-north-cs', title: 'Testimonial approval — Northmoor', owner: 'Priya Nandakumar', ownerType: 'client', priority: 'High', waitingDays: 21, waitingOn: 'Priya Nandakumar', blocks: 'blocks the case study page', chasedCount: 2, cold: true, column: 'with_client', due: 'gone cold' }),
 ]
 
 export const CHECKINS = [
@@ -188,9 +90,3 @@ export const CHECKINS = [
     notes: 'Marcus mentioned a possible Q4 budget for video. Worth a proposal after the case studies land.',
   },
 ]
-
-export function chaseItems(tasks) {
-  return tasks
-    .filter(t => t.waitingDays != null)
-    .sort((a, b) => b.waitingDays - a.waitingDays)
-}

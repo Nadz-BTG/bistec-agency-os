@@ -18,9 +18,9 @@ function extractFromText(text) {
   return { positioning, neverSay, icps: [...new Set(icpMatches)].slice(0, 3) }
 }
 
-export default function AddClientWizard({ onCreate, onCancel }) {
+export default function AddClientWizard({ team, onCreate, onCancel }) {
   const [step, setStep] = useState(1)
-  const [basics, setBasics] = useState({ name: '', tagline: '', stage: 'Discovery', lead: 'nadha' })
+  const [basics, setBasics] = useState({ name: '', tagline: '', stage: 'Discovery', lead: team[0]?.id || '' })
   const [source, setSource] = useState('')
   const [read, setRead] = useState({ positioning: '', icps: [], neverSay: [] })
   const [icpInput, setIcpInput] = useState('')
@@ -125,13 +125,14 @@ export default function AddClientWizard({ onCreate, onCancel }) {
           <div>
             <div style={{ fontSize: 12, color: COLORS.textFaint, marginBottom: 6 }}>Account lead</div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {[{ id: 'nadha', name: 'Nadha' }, { id: 'dilni', name: 'Dilni' }].map(m => (
+              {team.map(m => (
                 <span key={m.id} onClick={() => setBasics({ ...basics, lead: m.id })} style={{
                   padding: '5px 10px', borderRadius: 20, fontSize: 11.5, cursor: 'pointer',
                   background: basics.lead === m.id ? COLORS.navy : 'transparent', color: basics.lead === m.id ? '#fff' : COLORS.heading,
                   border: `1px solid ${basics.lead === m.id ? COLORS.navy : COLORS.borderStrong}`, fontWeight: basics.lead === m.id ? 600 : 400,
                 }}>{m.name}</span>
               ))}
+              {team.length === 0 && <span style={{ fontSize: 11.5, color: COLORS.textFaint, fontStyle: 'italic' }}>Add a teammate first</span>}
             </div>
           </div>
         </div>
@@ -204,7 +205,7 @@ export default function AddClientWizard({ onCreate, onCancel }) {
           </div>
           <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '16px 18px' }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>{basics.name || 'New client'}</div>
-            <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>{basics.tagline || 'New engagement'} · {basics.stage} · lead {basics.lead === 'nadha' ? 'Nadha' : 'Dilni'}</div>
+            <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>{basics.tagline || 'New engagement'} · {basics.stage} · lead {team.find(m => m.id === basics.lead)?.name || '—'}</div>
             {read.positioning && <div style={{ fontSize: 12.5, color: COLORS.text, marginTop: 8, fontStyle: 'italic' }}>"{read.positioning}"</div>}
           </div>
         </div>

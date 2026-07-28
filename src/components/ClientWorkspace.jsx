@@ -1,13 +1,22 @@
 import { useState } from 'react'
 import { COLORS, FONT_MONO } from '../theme.js'
-import { StageBadge, Avatar, ProgressBar, EditableField, Checkbox, Button } from './ui.jsx'
+import { StageBadge, Avatar, ProgressBar, EditableField, Checkbox, Button, EditDeleteIcons, teamName } from './ui.jsx'
 
 const TABS = ['Overview', 'Projects', 'Tasks', 'Check-ins', 'Files']
 
+function ownerLabel(t, team) {
+  if (t.ownerType === 'team') return teamName(team, t.owner)
+  return t.owner
+}
+
 export default function ClientWorkspace({
-  client, tasks, projects, checkins, onUpdateClient, onToggleTask, onOpenAiDrawer, onOpenKanban, onOpenCheckIn,
+  client, tasks, projects, checkins, team, onUpdateClient, onEditClient, onDeleteClient,
+  onToggleTask, onEditTask, onDeleteTask, onDeleteTasks, onAddTask,
+  onOpenAiDrawer, onOpenKanban, onOpenCheckIn,
+  onAddProject, onEditProject, onDeleteProject,
 }) {
   const [tab, setTab] = useState('Overview')
+  const [selectedTasks, setSelectedTasks] = useState(new Set())
   const clientTasks = tasks.filter(t => t.clientId === client.id)
   const clientProjects = projects.filter(p => p.clientId === client.id)
   const openCount = clientTasks.filter(t => t.status === 'open').length
@@ -18,6 +27,22 @@ export default function ClientWorkspace({
     .slice(0, 6)
   const clientCheckins = checkins.filter(ci => ci.clientId === client.id)
 
+  function toggleOneTask(id) {
+    setSelectedTasks(s => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  function toggleAllTasks() {
+    setSelectedTasks(s => (s.size === clientTasks.length ? new Set() : new Set(clientTasks.map(t => t.id))))
+  }
+  function bulkDelete() {
+    onDeleteTasks([...selectedTasks])
+    setSelectedTasks(new Set())
+  }
+
   return (
     <main style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
       <header style={{ padding: '26px 32px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
@@ -27,10 +52,11 @@ export default function ClientWorkspace({
             <StageBadge stage={client.stage} />
           </div>
           <p style={{ margin: '8px 0 0', fontSize: 13.5, color: COLORS.textMuted }}>
-            Retainer · started {client.started} · account lead <strong style={{ color: COLORS.heading }}>{client.lead === 'nadha' ? 'Nadha' : 'Dilni'}</strong> · next check-in {client.nextCheckIn}
+            Retainer · started {client.started} · account lead <strong style={{ color: COLORS.heading }}>{teamName(team, client.lead)}</strong> · next check-in {client.nextCheckIn}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <EditDeleteIcons onEdit={onEditClient} onDelete={onDeleteClient} deleteTitle="Delete client" />
           <Button variant="outline" onClick={() => onOpenCheckIn(client.id)}>Check-in</Button>
           <Button variant="accent" onClick={() => onOpenAiDrawer(client.id)} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', opacity: 0.9 }} />
@@ -63,6 +89,7 @@ export default function ClientWorkspace({
                 {client.icps.map(icp => (
                   <span key={icp} style={{ padding: '4px 9px', borderRadius: 6, background: '#EEF1F6', fontSize: 11.5 }}>{icp}</span>
                 ))}
+                {client.icps.length === 0 && <span style={{ fontSize: 11.5, color: COLORS.textFaint, fontStyle: 'italic' }}>None yet — edit client to add</span>}
               </div>
               <div style={{ height: 1, background: COLORS.border, margin: '14px 0' }} />
               <div style={{ font: `500 10px ${FONT_MONO}`, letterSpacing: '.09em', color: COLORS.textFaint }}>POSITIONING</div>
@@ -70,7 +97,10 @@ export default function ClientWorkspace({
             </div>
 
             <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16 }}>
-              <div style={{ font: `500 10px ${FONT_MONO}`, letterSpacing: '.09em', color: COLORS.textFaint }}>CONTACTS</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ font: `500 10px ${FONT_MONO}`, letterSpacing: '.09em', color: COLORS.textFaint }}>CONTACTS</div>
+                <span onClick={onEditClient} style={{ fontSize: 11, color: COLORS.orange, cursor: 'pointer' }}>Edit</span>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
                 {client.contacts.map(c => (
                   <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -81,6 +111,7 @@ export default function ClientWorkspace({
                     </div>
                   </div>
                 ))}
+                {client.contacts.length === 0 && <span style={{ fontSize: 11.5, color: COLORS.textFaint, fontStyle: 'italic' }}>No contacts yet</span>}
               </div>
             </div>
 
@@ -111,7 +142,7 @@ export default function ClientWorkspace({
             <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: `1px solid ${COLORS.border}` }}>
                 <div style={{ font: '600 13px "Instrument Sans",sans-serif' }}>Projects</div>
-                <span style={{ fontSize: 11.5, color: COLORS.orange, cursor: 'pointer' }} onClick={() => setTab('Projects')}>+ Add project</span>
+                <span style={{ fontSize: 11.5, color: COLORS.orange, cursor: 'pointer' }} onClick={() => onAddProject(client.id)}>+ Add project</span>
               </div>
               <div style={{ padding: '6px 18px 14px' }}>
                 {clientProjects.map((p, i) => {
@@ -119,22 +150,24 @@ export default function ClientWorkspace({
                   const color = p.status === 'blocked' ? COLORS.amber : p.status === 'done' ? COLORS.blue : COLORS.orange
                   return (
                     <div key={p.id} onClick={() => onOpenKanban(client.id, p.id)} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', gap: 10,
                       borderBottom: i < clientProjects.length - 1 ? `1px solid rgba(20,55,125,.06)` : 'none', cursor: 'pointer',
                     }}>
                       <div>
                         <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</div>
                         <div style={{ fontSize: 11.5, color: COLORS.textFaint, marginTop: 2 }}>
-                          {p.owner === 'nadha' ? 'Nadha' : 'Dilni'} · {p.done} of {p.total} done
+                          {teamName(team, p.owner)} · {p.done} of {p.total} done
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 140 }}><ProgressBar pct={pct} color={color} /></div>
-                        <span style={{ fontSize: 11.5, color, fontWeight: 600 }}>{p.note}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 120 }}><ProgressBar pct={pct} color={color} /></div>
+                        <span style={{ fontSize: 11.5, color, fontWeight: 600, whiteSpace: 'nowrap' }}>{p.note}</span>
+                        <EditDeleteIcons onEdit={() => onEditProject(p)} onDelete={() => onDeleteProject(p)} deleteTitle="Delete project" />
                       </div>
                     </div>
                   )
                 })}
+                {clientProjects.length === 0 && <div style={{ padding: '12px 0', fontSize: 12.5, color: COLORS.textFaint, fontStyle: 'italic' }}>No projects yet.</div>}
               </div>
             </div>
 
@@ -143,13 +176,13 @@ export default function ClientWorkspace({
               <div style={{ padding: '4px 18px 14px' }}>
                 {attention.length === 0 && <div style={{ padding: '11px 0', fontSize: 13, color: COLORS.textFaint }}>Nothing outstanding — nice work.</div>}
                 {attention.map((t, i) => (
-                  <div key={t.id} onClick={() => onToggleTask(t.id)} style={{
+                  <div key={t.id} style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0',
-                    borderBottom: i < attention.length - 1 ? `1px solid rgba(20,55,125,.06)` : 'none', cursor: 'pointer',
+                    borderBottom: i < attention.length - 1 ? `1px solid rgba(20,55,125,.06)` : 'none',
                   }}>
-                    <Checkbox checked={t.done} color={t.overdueDays ? COLORS.orange : t.waitingDays ? COLORS.amber : undefined} />
-                    <div style={{ flex: 1, fontSize: 13.5 }}>{t.title}</div>
-                    <span style={{ fontSize: 11.5, color: COLORS.textFaint }}>{t.ownerType === 'team' ? (t.owner === 'nadha' ? 'Nadha' : 'Dilni') : t.owner}</span>
+                    <Checkbox checked={t.done} color={t.overdueDays ? COLORS.orange : t.waitingDays ? COLORS.amber : undefined} onClick={() => onToggleTask(t.id)} />
+                    <div style={{ flex: 1, fontSize: 13.5, cursor: 'pointer' }} onClick={() => onEditTask(t)}>{t.title}</div>
+                    <span style={{ fontSize: 11.5, color: COLORS.textFaint }}>{ownerLabel(t, team)}</span>
                     {t.overdueDays ? (
                       <span style={{ padding: '3px 8px', borderRadius: 5, background: '#FDE7D3', color: COLORS.orangeDark, font: '600 11px "Instrument Sans",sans-serif' }}>{t.overdueDays}d overdue</span>
                     ) : t.waitingDays ? (
@@ -157,6 +190,7 @@ export default function ClientWorkspace({
                     ) : (
                       <span style={{ fontSize: 11.5, color: COLORS.textMuted }}>{t.due || '—'}</span>
                     )}
+                    <EditDeleteIcons onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} deleteTitle="Delete task" />
                   </div>
                 ))}
               </div>
@@ -167,35 +201,58 @@ export default function ClientWorkspace({
 
       {tab === 'Projects' && (
         <div style={{ padding: '24px 32px 32px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button variant="primary" onClick={() => onAddProject(client.id)}>+ Add project</Button>
+          </div>
           {clientProjects.map(p => {
             const pct = p.total ? Math.round((p.done / p.total) * 100) : 0
             return (
-              <div key={p.id} onClick={() => onOpenKanban(client.id, p.id)} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '16px 18px', cursor: 'pointer' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</div>
-                  <span style={{ fontSize: 12, color: COLORS.textFaint }}>{p.owner === 'nadha' ? 'Nadha' : 'Dilni'}</span>
+              <div key={p.id} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '16px 18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div onClick={() => onOpenKanban(client.id, p.id)} style={{ cursor: 'pointer', flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</div>
+                    <div style={{ marginTop: 10 }}><ProgressBar pct={pct} /></div>
+                    <div style={{ marginTop: 6, fontSize: 12, color: COLORS.textMuted }}>{teamName(team, p.owner)} · {p.done} of {p.total} done · {p.note}</div>
+                  </div>
+                  <EditDeleteIcons onEdit={() => onEditProject(p)} onDelete={() => onDeleteProject(p)} deleteTitle="Delete project" />
                 </div>
-                <div style={{ marginTop: 10 }}><ProgressBar pct={pct} /></div>
-                <div style={{ marginTop: 6, fontSize: 12, color: COLORS.textMuted }}>{p.done} of {p.total} done · {p.note}</div>
               </div>
             )
           })}
+          {clientProjects.length === 0 && <div style={{ fontSize: 13, color: COLORS.textFaint }}>No projects yet.</div>}
         </div>
       )}
 
       {tab === 'Tasks' && (
-        <div style={{ padding: '24px 32px 32px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ padding: '24px 32px 32px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {clientTasks.length > 0 && (
+                <>
+                  <Checkbox checked={selectedTasks.size === clientTasks.length} onClick={toggleAllTasks} title="Select all" />
+                  <span style={{ fontSize: 11.5, color: COLORS.textFaint }}>Select all</span>
+                </>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {selectedTasks.size > 0 && <Button variant="danger" onClick={bulkDelete}>Delete {selectedTasks.size} selected</Button>}
+              <Button variant="primary" onClick={() => onAddTask(client.id)}>+ Task</Button>
+            </div>
+          </div>
           {clientTasks.map((t, i) => (
-            <div key={t.id} onClick={() => onToggleTask(t.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: '11px 4px', cursor: 'pointer',
+            <div key={t.id} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '11px 4px',
               borderBottom: i < clientTasks.length - 1 ? `1px solid rgba(20,55,125,.06)` : 'none',
             }}>
-              <Checkbox checked={t.done} />
-              <div style={{ flex: 1, fontSize: 13.5, textDecoration: t.done ? 'line-through' : 'none', color: t.done ? COLORS.textFaint : COLORS.text }}>{t.title}</div>
-              <span style={{ fontSize: 11.5, color: COLORS.textFaint }}>{t.ownerType === 'team' ? (t.owner === 'nadha' ? 'Nadha' : 'Dilni') : t.owner}</span>
+              <Checkbox checked={selectedTasks.has(t.id)} onClick={() => toggleOneTask(t.id)} />
+              <Checkbox checked={t.done} onClick={() => onToggleTask(t.id)} />
+              <div style={{ flex: 1, fontSize: 13.5, textDecoration: t.done ? 'line-through' : 'none', color: t.done ? COLORS.textFaint : COLORS.text, cursor: 'pointer' }} onClick={() => onEditTask(t)}>{t.title}</div>
+              <span style={{ fontSize: 11.5, color: COLORS.textFaint }}>{ownerLabel(t, team)}</span>
               <span style={{ fontSize: 11.5, color: COLORS.textMuted }}>{t.due || '—'}</span>
+              <EditDeleteIcons onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} deleteTitle="Delete task" />
             </div>
           ))}
+          {clientTasks.length === 0 && <div style={{ fontSize: 13, color: COLORS.textFaint }}>No tasks yet.</div>}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { COLORS, FONT_MONO } from '../theme.js'
-import { ProgressBar, Button } from './ui.jsx'
+import { ProgressBar, Button, EditDeleteIcons, teamName } from './ui.jsx'
 
 const COLUMNS = [
   { key: 'backlog', label: 'BACKLOG', color: COLORS.textMuted },
@@ -10,13 +10,13 @@ const COLUMNS = [
   { key: 'live', label: 'LIVE', color: COLORS.blueDark },
 ]
 
-function ownerBadge(t) {
-  if (t.ownerType === 'team') return { label: t.owner === 'nadha' ? 'NADHA' : 'DILNI', bg: t.owner === 'nadha' ? '#EEF1F6' : '#DCEBF7', color: t.owner === 'nadha' ? COLORS.textMuted : COLORS.blueDark }
+function ownerBadge(t, team) {
+  if (t.ownerType === 'team') return { label: teamName(team, t.owner).toUpperCase(), bg: '#EEF1F6', color: COLORS.textMuted }
   if (t.ownerType === 'client') return { label: t.owner.split(' ')[0].toUpperCase(), bg: '#E3E9F5', color: COLORS.navy }
   return { label: t.owner.toUpperCase(), bg: '#FDE7D3', color: COLORS.orangeDark }
 }
 
-export default function KanbanBoard({ client, projects, tasks, initialProjectId, onMoveTask, onAddTask }) {
+export default function KanbanBoard({ client, projects, tasks, team, initialProjectId, onMoveTask, onAddTask, onEditTask, onDeleteTask }) {
   const clientProjects = projects.filter(p => p.clientId === client.id)
   const [projectId, setProjectId] = useState(initialProjectId || clientProjects[0]?.id)
   const project = clientProjects.find(p => p.id === projectId) || clientProjects[0]
@@ -29,7 +29,12 @@ export default function KanbanBoard({ client, projects, tasks, initialProjectId,
   }
 
   if (!project) {
-    return <main style={{ padding: 32, color: COLORS.textFaint, flex: 1 }}>This client has no projects yet.</main>
+    return (
+      <main style={{ padding: 32, color: COLORS.textFaint, flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        This client has no projects yet.
+        <Button variant="primary" onClick={() => onAddTask(client.id, null)} style={{ alignSelf: 'flex-start' }}>+ Task</Button>
+      </main>
+    )
   }
 
   return (
@@ -43,7 +48,7 @@ export default function KanbanBoard({ client, projects, tasks, initialProjectId,
             {clientProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
-        <Button variant="primary" onClick={() => onAddTask({ title: 'New task', clientId: client.id, projectId: project.id, owner: 'nadha', priority: 'Med', due: '', column: 'backlog' })}>+ Task</Button>
+        <Button variant="primary" onClick={() => onAddTask(client.id, project.id)}>+ Task</Button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(200px, 1fr))`, gap: 12, alignItems: 'start' }}>
@@ -55,7 +60,7 @@ export default function KanbanBoard({ client, projects, tasks, initialProjectId,
                 <span>{col.label}</span><span>{colTasks.length}</span>
               </div>
               {colTasks.map(t => {
-                const badge = ownerBadge(t)
+                const badge = ownerBadge(t, team)
                 const withClient = col.key === 'with_client'
                 return (
                   <div key={t.id} draggable onDragStart={() => setDragId(t.id)} style={{
@@ -63,7 +68,12 @@ export default function KanbanBoard({ client, projects, tasks, initialProjectId,
                     border: `1px solid ${withClient ? 'rgba(252,175,23,.35)' : col.key === 'live' ? 'rgba(0,111,185,.25)' : COLORS.border}`,
                     borderRadius: 9, padding: 12, cursor: 'grab',
                   }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>{t.title}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>{t.title}</div>
+                      <div draggable={false}>
+                        <EditDeleteIcons onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} deleteTitle="Delete task" />
+                      </div>
+                    </div>
                     {t.note && (
                       <div style={{ marginTop: 8, padding: '5px 8px', borderRadius: 6, background: col.key === 'live' ? 'transparent' : '#FFF3E2', fontSize: 11, color: col.key === 'live' ? COLORS.blueDark : COLORS.amberDark }}>
                         {t.note}
@@ -83,6 +93,7 @@ export default function KanbanBoard({ client, projects, tasks, initialProjectId,
                   </div>
                 )
               })}
+              {colTasks.length === 0 && <div style={{ fontSize: 11.5, color: COLORS.textFaint, fontStyle: 'italic', padding: '4px 2px' }}>—</div>}
             </div>
           )
         })}

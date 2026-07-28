@@ -1,5 +1,6 @@
 import { COLORS, FONT_MONO } from '../theme.js'
-import { Button } from './ui.jsx'
+import { Button, IconButton } from './ui.jsx'
+import { Trash2 } from 'lucide-react'
 
 function ageColor(days, cold) {
   if (cold || days >= 14) return COLORS.orange
@@ -7,7 +8,7 @@ function ageColor(days, cold) {
   return '#DDE3EC'
 }
 
-export default function ChaseQueue({ tasks, clients, onSnooze, onDraftChase }) {
+export default function ChaseQueue({ tasks, clients, onSnooze, onDraftChase, onDeleteTask }) {
   const clientName = id => clients.find(c => c.id === id)?.name || id
   const items = tasks
     .filter(t => t.waitingDays != null && !t.snoozed)
@@ -46,7 +47,10 @@ export default function ChaseQueue({ tasks, clients, onSnooze, onDraftChase }) {
                 <div style={{ font: `500 9.5px ${FONT_MONO}`, letterSpacing: '.08em', marginTop: 3 }}>DAYS</div>
               </div>
               <div style={{ padding: '15px 18px' }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{t.title} — {clientName(t.clientId)}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{t.title} — {clientName(t.clientId)}</div>
+                  <IconButton icon={Trash2} tone="danger" onClick={() => onDeleteTask(t.id)} title="Remove from queue" />
+                </div>
                 <div style={{ fontSize: 12.5, color: COLORS.textMuted, marginTop: 4 }}>
                   {t.chasedCount > 0 ? `Chased ${t.chasedCount} time${t.chasedCount > 1 ? 's' : ''}` : 'Not chased yet'}
                   {t.blocks ? ` · ${t.blocks}` : ''}
