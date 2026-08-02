@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { dueLabelFor, overdueDaysFor, waitingDaysFor, todayISO } from './dates.js'
 import { supabase, FILES_BUCKET } from './supabaseClient.js'
 import Login from './components/Login.jsx'
+import UpdatePassword from './components/UpdatePassword.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Home from './components/Home.jsx'
 import ClientWorkspace from './components/ClientWorkspace.jsx'
@@ -21,6 +22,7 @@ function newId(prefix) { return `${prefix}-${Date.now()}-${Math.round(Math.rando
 
 export default function App() {
   const [session, setSession] = useState(undefined) // undefined = not checked yet, null = signed out
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
   const [state, setState] = useState(EMPTY_STATE)
   const [dataLoaded, setDataLoaded] = useState(false)
   const [saveStatus, setSaveStatus] = useState('saved')
@@ -37,7 +39,10 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => setSession(next))
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
+      setSession(next)
+    })
     return () => sub.subscription.unsubscribe()
   }, [])
 
@@ -301,6 +306,7 @@ export default function App() {
     : null
 
   if (session === undefined) return null
+  if (passwordRecovery) return <UpdatePassword onDone={() => setPasswordRecovery(false)} />
   if (!session) return <Login />
   if (!dataLoaded) {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#7C8BA1', fontSize: 13 }}>Loading workspace…</div>
