@@ -2,10 +2,10 @@ import { useRef, useState } from 'react'
 import { Download, Upload } from 'lucide-react'
 import { COLORS, FONT_MONO } from '../theme.js'
 import { StageBadge, Avatar, ProgressBar, EditableField, Checkbox, Button, EditDeleteIcons, teamName } from './ui.jsx'
-import { formatDate, relativeDayLabel, todayISO } from '../dates.js'
+import { formatDate, relativeDayLabel } from '../dates.js'
 
 const TABS = ['Overview', 'Projects', 'Tasks', 'Check-ins', 'Files']
-const MAX_FILE_BYTES = 4 * 1024 * 1024
+const MAX_FILE_BYTES = 25 * 1024 * 1024
 
 function ownerLabel(t, team) {
   if (t.ownerType === 'team') return teamName(team, t.owner)
@@ -19,7 +19,7 @@ function formatBytes(bytes) {
 }
 
 export default function ClientWorkspace({
-  client, tasks, projects, checkins, team, currentUser, onUpdateClient, onEditClient, onDeleteClient,
+  client, tasks, projects, checkins, team, onUpdateClient, onEditClient, onDeleteClient,
   onToggleTask, onEditTask, onDeleteTask, onDeleteTasks, onAddTask,
   onOpenAiDrawer, onOpenKanban, onOpenCheckIn,
   onAddProject, onEditProject, onDeleteProject,
@@ -62,21 +62,9 @@ export default function ClientWorkspace({
     const tooBig = picked.filter(f => f.size > MAX_FILE_BYTES)
     const ok = picked.filter(f => f.size <= MAX_FILE_BYTES)
     if (tooBig.length > 0) {
-      window.alert(`${tooBig.map(f => f.name).join(', ')} — over 4MB and skipped. Files are stored in this browser only, so keep uploads small.`)
+      window.alert(`${tooBig.map(f => f.name).join(', ')} — over 25MB and skipped.`)
     }
-    Promise.all(ok.map(f => new Promise(resolve => {
-      const reader = new FileReader()
-      reader.onload = () => resolve({
-        id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        name: f.name,
-        size: f.size,
-        type: f.type,
-        dataUrl: reader.result,
-        uploadedBy: currentUser?.name || 'Someone',
-        uploadedAt: todayISO(),
-      })
-      reader.readAsDataURL(f)
-    }))).then(entries => onAddFiles(entries))
+    if (ok.length > 0) onAddFiles(ok)
   }
 
   return (
@@ -311,7 +299,7 @@ export default function ClientWorkspace({
       {tab === 'Files' && (
         <div style={{ padding: '24px 32px 32px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11.5, color: COLORS.textFaint }}>Stored in this browser only — not synced across devices.</span>
+            <span style={{ fontSize: 11.5, color: COLORS.textFaint }}>Shared with the whole team — up to 25MB per file.</span>
             <Button variant="primary" onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Upload size={14} /> Upload file
             </Button>

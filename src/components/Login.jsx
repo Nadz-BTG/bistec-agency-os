@@ -1,52 +1,58 @@
 import { useState } from 'react'
 import { COLORS } from '../theme.js'
-import { Avatar, Button } from './ui.jsx'
-import { EditTeamMemberModal } from './Modals.jsx'
+import { Button, inputStyle } from './ui.jsx'
+import { supabase } from '../supabaseClient.js'
 
-export default function Login({ team, onSelect, onCreateAndSelect }) {
-  const [adding, setAdding] = useState(false)
+export default function Login() {
+  const [mode, setMode] = useState('signin') // 'signin' | 'signup'
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  async function submit(e) {
+    e.preventDefault()
+    setError('')
+    setNotice('')
+    setBusy(true)
+    const { error: err } = mode === 'signin'
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({ email, password })
+    setBusy(false)
+    if (err) { setError(err.message); return }
+    if (mode === 'signup') setNotice('Account created — check your email to confirm, then sign in.')
+  }
 
   return (
     <div style={{ minHeight: '100vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.page }}>
-      <div style={{ width: 420, display: 'flex', flexDirection: 'column', gap: 22, padding: 20 }}>
+      <form onSubmit={submit} style={{ width: 380, display: 'flex', flexDirection: 'column', gap: 18, padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, justifyContent: 'center' }}>
           <div style={{ width: 26, height: 26, borderRadius: 7, background: COLORS.orange }} />
           <span style={{ font: '600 18px "Instrument Sans",sans-serif', color: COLORS.heading }}>Agency OS</span>
         </div>
         <div style={{ textAlign: 'center' }}>
-          <h1 style={{ margin: 0, font: "400 28px 'Instrument Serif',serif", color: COLORS.heading }}>Who's working today?</h1>
-          <p style={{ margin: '8px 0 0', fontSize: 13, color: COLORS.textMuted }}>Pick your profile to continue — this browser will remember you.</p>
+          <h1 style={{ margin: 0, font: "400 28px 'Instrument Serif',serif", color: COLORS.heading }}>{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h1>
+          <p style={{ margin: '8px 0 0', fontSize: 13, color: COLORS.textMuted }}>Shared workspace for the whole team — sign in from any device.</p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {team.map(m => (
-            <button key={m.id} onClick={() => onSelect(m.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#fff',
-              border: `1px solid ${COLORS.border}`, borderRadius: 10, cursor: 'pointer', textAlign: 'left', font: 'inherit',
-            }}>
-              <Avatar name={m.name} initials={m.initials} team={team} size={34} />
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.heading }}>{m.name}</div>
-                <div style={{ fontSize: 11.5, color: COLORS.textFaint }}>{m.role}</div>
-              </div>
-            </button>
-          ))}
-          {team.length === 0 && (
-            <div style={{ fontSize: 12.5, color: COLORS.textFaint, textAlign: 'center', fontStyle: 'italic' }}>No profiles yet — add the first one below.</div>
-          )}
-        </div>
-        <Button variant="outline" onClick={() => setAdding(true)}>+ Add my profile</Button>
-        <p style={{ margin: 0, fontSize: 11, color: COLORS.textFaint, textAlign: 'center' }}>
-          This identifies you on this device only — it isn't a password.
+        <label style={{ fontSize: 12, color: COLORS.textFaint }}>Email
+          <input type="email" required autoFocus value={email} onChange={e => setEmail(e.target.value)} style={{ ...inputStyle, marginTop: 5 }} placeholder="you@bistecglobal.com" />
+        </label>
+        <label style={{ fontSize: 12, color: COLORS.textFaint }}>Password
+          <input type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} style={{ ...inputStyle, marginTop: 5 }} placeholder="At least 6 characters" />
+        </label>
+        {error && <div style={{ padding: '9px 12px', borderRadius: 7, background: '#FDE7D3', color: COLORS.orangeDark, fontSize: 12.5 }}>{error}</div>}
+        {notice && <div style={{ padding: '9px 12px', borderRadius: 7, background: '#DCEBF7', color: COLORS.blueDark, fontSize: 12.5 }}>{notice}</div>}
+        <Button type="submit" variant="accent" disabled={busy || !email || password.length < 6}>
+          {busy ? 'One sec…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+        </Button>
+        <p style={{ margin: 0, fontSize: 12.5, color: COLORS.textMuted, textAlign: 'center' }}>
+          {mode === 'signin' ? "New teammate? " : 'Already have an account? '}
+          <span onClick={() => { setMode(m => (m === 'signin' ? 'signup' : 'signin')); setError(''); setNotice('') }} style={{ color: COLORS.orange, cursor: 'pointer', fontWeight: 600 }}>
+            {mode === 'signin' ? 'Create an account' : 'Sign in'}
+          </span>
         </p>
-      </div>
-      {adding && (
-        <EditTeamMemberModal
-          isNew
-          member={null}
-          onClose={() => setAdding(false)}
-          onSave={m => onCreateAndSelect(m)}
-        />
-      )}
+      </form>
     </div>
   )
 }

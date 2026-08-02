@@ -1,4 +1,5 @@
-import { Plus } from 'lucide-react'
+import { useState } from 'react'
+import { UserPlus } from 'lucide-react'
 import { COLORS, FONT_MONO } from '../theme.js'
 import { Avatar, EditDeleteIcons } from './ui.jsx'
 
@@ -11,8 +12,14 @@ const NAV_ITEMS = [
 
 export default function Sidebar({
   view, onNavigate, clients, activeClientId, counts, team, currentUser, saveStatus, onLogout,
-  onAddTeamMember, onEditTeamMember, onDeleteTeamMember,
+  onEditTeamMember, onDeleteTeamMember,
 }) {
+  const [copied, setCopied] = useState(false)
+  function inviteTeammate() {
+    navigator.clipboard?.writeText(window.location.origin)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
   return (
     <aside style={{
       background: COLORS.navy, color: '#EAF0F8', padding: '20px 16px',
@@ -88,14 +95,14 @@ export default function Sidebar({
           </div>
         ))}
         {team.length === 0 && <div style={{ fontSize: 11.5, color: '#8FA3C0', fontStyle: 'italic' }}>No teammates yet</div>}
-        <div onClick={onAddTeamMember} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#8FA3C0', cursor: 'pointer' }}>
+        <div onClick={inviteTeammate} title="Copy the app link to invite them" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#8FA3C0', cursor: 'pointer' }}>
           <div style={{ width: 24, height: 24, borderRadius: '50%', border: '1px dashed rgba(255,255,255,.28)', display: 'grid', placeItems: 'center' }}>
-            <Plus size={13} />
+            <UserPlus size={13} />
           </div>
-          Add teammate
+          {copied ? 'Link copied!' : 'Invite teammate'}
         </div>
         <div onClick={onLogout} style={{ fontSize: 11.5, color: '#8FA3C0', cursor: 'pointer', marginTop: 4 }}>
-          Switch profile
+          Sign out
         </div>
       </div>
     </aside>
