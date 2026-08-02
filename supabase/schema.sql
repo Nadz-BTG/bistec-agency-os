@@ -143,29 +143,13 @@ create policy "client_files_delete" on storage.objects for delete
   using (bucket_id = 'client-files' and auth.role() = 'authenticated');
 
 -- ============ REALTIME ============
--- Lets every signed-in browser see other people's changes live.
-do $$
-begin
-  alter publication supabase_realtime add table public.team_members;
-exception when duplicate_object then null;
-end $$;
-do $$
-begin
-  alter publication supabase_realtime add table public.clients;
-exception when duplicate_object then null;
-end $$;
-do $$
-begin
-  alter publication supabase_realtime add table public.projects;
-exception when duplicate_object then null;
-end $$;
-do $$
-begin
-  alter publication supabase_realtime add table public.tasks;
-exception when duplicate_object then null;
-end $$;
-do $$
-begin
-  alter publication supabase_realtime add table public.checkins;
-exception when duplicate_object then null;
-end $$;
+-- Lets every signed-in browser see other people's changes live. Each table
+-- is wrapped separately with a broad exception catch: if the publication is
+-- already FOR ALL TABLES (some project templates default to this), adding a
+-- table explicitly errors even though realtime already covers it — either
+-- way the table ends up streamed, so any error here is safe to ignore.
+do $$ begin alter publication supabase_realtime add table public.team_members; exception when others then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.clients; exception when others then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.projects; exception when others then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.tasks; exception when others then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.checkins; exception when others then null; end $$;

@@ -24,6 +24,7 @@ export default function App() {
   const [state, setState] = useState(EMPTY_STATE)
   const [dataLoaded, setDataLoaded] = useState(false)
   const [saveStatus, setSaveStatus] = useState('saved')
+  const [syncError, setSyncError] = useState(null)
   const [view, setView] = useState('home')
   const [activeClientId, setActiveClientId] = useState(null)
   const [activeProjectId, setActiveProjectId] = useState(null)
@@ -81,8 +82,19 @@ export default function App() {
   function sync(promise) {
     setSaveStatus('saving')
     Promise.resolve(promise).then(({ error }) => {
-      if (error) console.error(error)
-    }).finally(() => setSaveStatus('saved'))
+      if (error) {
+        console.error(error)
+        setSaveStatus('error')
+        setSyncError(error.message || 'Unknown error saving to the database.')
+        return
+      }
+      setSyncError(null)
+      setSaveStatus('saved')
+    }).catch(err => {
+      console.error(err)
+      setSaveStatus('error')
+      setSyncError(err.message || 'Network error reaching the database.')
+    })
   }
 
   const { clients, projects, checkins, team } = state
@@ -260,13 +272,16 @@ export default function App() {
   async function addFilesToClient(clientId, pickedFiles) {
     setSaveStatus('saving')
     const entries = []
+    const failed = []
     for (const f of pickedFiles) {
       const path = `${clientId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${f.name}`
       const { error: upErr } = await supabase.storage.from(FILES_BUCKET).upload(path, f)
-      if (upErr) { console.error(upErr); continue }
+      if (upErr) { console.error(upErr); failed.push(`${f.name}: ${upErr.message}`); continue }
       const { data: pub } = supabase.storage.from(FILES_BUCKET).getPublicUrl(path)
       entries.push({ id: path, name: f.name, size: f.size, type: f.type, dataUrl: pub.publicUrl, uploadedBy: currentUser?.name || 'Someone', uploadedAt: todayISO() })
     }
+    if (failed.length) { setSaveStatus('error'); setSyncError(`Upload failed — ${failed.join('; ')}`) }
+    if (entries.length === 0) { if (!failed.length) setSaveStatus('saved'); return }
     const client = state.clients.find(c => c.id === clientId)
     const files = [...(client?.files || []), ...entries]
     setState(s => ({ ...s, clients: s.clients.map(c => (c.id === clientId ? { ...c, files } : c)) }))
@@ -302,6 +317,8 @@ export default function App() {
         team={team}
         currentUser={currentUser}
         saveStatus={saveStatus}
+        syncError={syncError}
+        onDismissSyncError={() => setSyncError(null)}
         onLogout={logout}
         onEditTeamMember={m => setTeamModal({ isNew: false, data: m })}
         onDeleteTeamMember={m => {

@@ -11,7 +11,7 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar({
-  view, onNavigate, clients, activeClientId, counts, team, currentUser, saveStatus, onLogout,
+  view, onNavigate, clients, activeClientId, counts, team, currentUser, saveStatus, syncError, onDismissSyncError, onLogout,
   onEditTeamMember, onDeleteTeamMember,
 }) {
   const [copied, setCopied] = useState(false)
@@ -33,11 +33,18 @@ export default function Sidebar({
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 8, fontSize: 10.5, color: '#8FA3C0' }}>
           <span style={{
             width: 6, height: 6, borderRadius: '50%',
-            background: saveStatus === 'saving' ? '#FCAF17' : '#4ADE80',
+            background: saveStatus === 'error' ? '#F87171' : saveStatus === 'saving' ? '#FCAF17' : '#4ADE80',
           }} />
-          {saveStatus === 'saving' ? 'Saving…' : 'Saved'}
+          {saveStatus === 'error' ? 'Save failed' : saveStatus === 'saving' ? 'Saving…' : 'Saved'}
         </div>
       </div>
+
+      {syncError && (
+        <div style={{ background: 'rgba(248,113,113,.15)', border: '1px solid rgba(248,113,113,.4)', borderRadius: 8, padding: '9px 11px', fontSize: 11.5, color: '#FCA5A5', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div>{syncError}</div>
+          <span onClick={onDismissSyncError} style={{ alignSelf: 'flex-start', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Dismiss</span>
+        </div>
+      )}
 
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 13 }}>
         {NAV_ITEMS.map(item => {
