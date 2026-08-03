@@ -91,7 +91,7 @@ export function EditClientModal({ client, isNew, team, onSave, onClose }) {
   )
 }
 
-export function EditTeamMemberModal({ member, isNew, onSave, onClose }) {
+export function EditTeamMemberModal({ member, isNew, viewerIsAdmin, onSave, onClose }) {
   const [form, setForm] = useState(member || {
     name: '', initials: '', role: '', color: AVATAR_SWATCHES[0].color, textColor: AVATAR_SWATCHES[0].textColor,
   })
@@ -132,6 +132,14 @@ export function EditTeamMemberModal({ member, isNew, onSave, onClose }) {
           ))}
         </div>
       </Field>
+      {viewerIsAdmin && !isNew && (
+        <Field label="Permissions">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: COLORS.text, cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!form.isAdmin} onChange={e => set({ isAdmin: e.target.checked })} />
+            Admin — can delete clients, edit or remove other teammates
+          </label>
+        </Field>
+      )}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
         <Button variant="outline" onClick={onClose}>Cancel</Button>
         <Button variant="accent" onClick={save} disabled={!form.name.trim()}>{isNew ? 'Add teammate' : 'Save changes'}</Button>

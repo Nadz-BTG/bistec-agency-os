@@ -7,7 +7,7 @@ function greetingDate() {
   return d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
 }
 
-export default function Home({ clients, tasks, currentUserName, onOpenClient, onNavigate, onEditClient, onDeleteClient, onDeleteClients }) {
+export default function Home({ clients, tasks, currentUserName, isAdmin, onOpenClient, onNavigate, onEditClient, onDeleteClient, onDeleteClients }) {
   const [selected, setSelected] = useState(new Set())
 
   const overdue = tasks.filter(t => t.overdueDays).length
@@ -62,7 +62,7 @@ export default function Home({ clients, tasks, currentUserName, onOpenClient, on
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {sorted.length > 0 && (
+            {isAdmin && sorted.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Checkbox checked={selected.size === sorted.length} onClick={toggleAll} title="Select all" />
                 <span style={{ fontSize: 11.5, color: COLORS.textFaint }}>Select all</span>
@@ -71,7 +71,7 @@ export default function Home({ clients, tasks, currentUserName, onOpenClient, on
             <h2 style={{ margin: 0, font: '600 13px "Instrument Sans",sans-serif', letterSpacing: '.01em' }}>Client portfolio</h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {selected.size > 0 && (
+            {isAdmin && selected.size > 0 && (
               <Button variant="danger" onClick={() => { onDeleteClients([...selected]); setSelected(new Set()) }}>Delete {selected.size} selected</Button>
             )}
             <span style={{ fontSize: 12, color: COLORS.textFaint }}>Sorted by what needs you</span>
@@ -96,7 +96,7 @@ export default function Home({ clients, tasks, currentUserName, onOpenClient, on
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <Checkbox checked={selected.has(c.id)} onClick={() => toggleOne(c.id)} />
+                    {isAdmin && <Checkbox checked={selected.has(c.id)} onClick={() => toggleOne(c.id)} />}
                     <div>
                       <div style={{ font: '600 16px "Instrument Sans",sans-serif' }}>{c.name}</div>
                       <div style={{ fontSize: 12, color: COLORS.textFaint, marginTop: 2 }}>{c.tagline}</div>
@@ -104,7 +104,7 @@ export default function Home({ clients, tasks, currentUserName, onOpenClient, on
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <StageBadge stage={c.stage} />
-                    <EditDeleteIcons onEdit={() => onEditClient(c)} onDelete={() => onDeleteClient(c)} deleteTitle="Delete client" />
+                    <EditDeleteIcons onEdit={() => onEditClient(c)} onDelete={isAdmin ? () => onDeleteClient(c) : undefined} deleteTitle="Delete client" />
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 3 }}>

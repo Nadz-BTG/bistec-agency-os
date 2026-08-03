@@ -312,6 +312,8 @@ export default function App() {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#7C8BA1', fontSize: 13 }}>Loading workspace…</div>
   }
 
+  const isAdmin = !!currentUser?.isAdmin
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar
@@ -337,6 +339,7 @@ export default function App() {
           clients={clients}
           tasks={tasks}
           currentUserName={currentUser?.name || 'there'}
+          isAdmin={isAdmin}
           onOpenClient={openClient}
           onNavigate={navigate}
           onEditClient={c => setClientModal({ isNew: false, data: c })}
@@ -356,6 +359,7 @@ export default function App() {
           projects={projects}
           checkins={checkins}
           team={team}
+          isAdmin={isAdmin}
           onUpdateClient={updateClient}
           onAddFiles={files => addFilesToClient(activeClient.id, files)}
           onDeleteFile={fileId => { if (window.confirm('Delete this file?')) deleteFile(activeClient.id, fileId) }}
@@ -456,6 +460,7 @@ export default function App() {
         <EditTeamMemberModal
           member={teamModal.data}
           isNew={teamModal.isNew}
+          viewerIsAdmin={isAdmin}
           onSave={saveTeamMember}
           onClose={() => setTeamModal(null)}
         />

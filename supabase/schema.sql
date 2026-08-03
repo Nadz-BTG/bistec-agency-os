@@ -14,21 +14,63 @@ create table if not exists public.team_members (
   initials text,
   role text default 'Account lead',
   color text default '#14377D',
-  "textColor" text default '#fff'
+  "textColor" text default '#fff',
+  "isAdmin" boolean not null default false
 );
+alter table public.team_members add column if not exists "isAdmin" boolean not null default false;
+
+-- Bypasses RLS (security definer) — lets any authenticated user check
+-- admin status without needing a recursive/self-referencing policy.
+create or replace function public.is_admin()
+returns boolean as $$
+  select exists (
+    select 1 from public.team_members
+    where "userId" = auth.uid() and "isAdmin" = true
+  );
+$$ language sql security definer stable set search_path = public;
 
 alter table public.team_members enable row level security;
 drop policy if exists "team_members_all" on public.team_members;
-create policy "team_members_all" on public.team_members for all
-  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+drop policy if exists "team_members_select" on public.team_members;
+drop policy if exists "team_members_update" on public.team_members;
+drop policy if exists "team_members_delete" on public.team_members;
+create policy "team_members_select" on public.team_members for select
+  using (auth.role() = 'authenticated');
+-- Anyone can edit their own profile; only admins can edit someone else's
+-- (including promoting/demoting admin status).
+create policy "team_members_update" on public.team_members for update
+  using ("userId" = auth.uid() or public.is_admin())
+  with check ("userId" = auth.uid() or public.is_admin());
+create policy "team_members_delete" on public.team_members for delete
+  using (public.is_admin());
+
+-- The update policy above only checks row *ownership*, not which columns
+-- changed — without this, anyone could self-promote by updating their own
+-- row with isAdmin:true. This silently reverts that column unless the
+-- actor already is an admin.
+create or replace function public.protect_admin_column()
+returns trigger as $$
+begin
+  if new."isAdmin" is distinct from old."isAdmin" and not public.is_admin() then
+    new."isAdmin" := old."isAdmin";
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists protect_admin_column_trigger on public.team_members;
+create trigger protect_admin_column_trigger
+  before update on public.team_members
+  for each row execute function public.protect_admin_column();
 
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
   handle text := coalesce(nullif(split_part(new.email, '@', 1), ''), 'New teammate');
+  first_user boolean := not exists (select 1 from public.team_members);
 begin
-  insert into public.team_members (id, "userId", name, initials, role, color, "textColor")
-  values (gen_random_uuid(), new.id, initcap(handle), upper(left(handle, 2)), 'Account lead', '#14377D', '#fff');
+  insert into public.team_members (id, "userId", name, initials, role, color, "textColor", "isAdmin")
+  values (gen_random_uuid(), new.id, initcap(handle), upper(left(handle, 2)), 'Account lead', '#14377D', '#fff', first_user);
   return new;
 end;
 $$ language plpgsql security definer set search_path = public;
@@ -37,6 +79,11 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- One-time manual promotion, if the bootstrap rule above didn't land on the
+-- right account (e.g. test signups came first): run this with your email.
+-- update public.team_members set "isAdmin" = true
+--   where "userId" = (select id from auth.users where email = 'you@bistecglobal.com');
 
 -- ============ CLIENTS ============
 create table if not exists public.clients (
@@ -58,8 +105,16 @@ create table if not exists public.clients (
 );
 alter table public.clients enable row level security;
 drop policy if exists "clients_all" on public.clients;
-create policy "clients_all" on public.clients for all
+drop policy if exists "clients_select" on public.clients;
+drop policy if exists "clients_insert" on public.clients;
+drop policy if exists "clients_update" on public.clients;
+drop policy if exists "clients_delete" on public.clients;
+create policy "clients_select" on public.clients for select using (auth.role() = 'authenticated');
+create policy "clients_insert" on public.clients for insert with check (auth.role() = 'authenticated');
+create policy "clients_update" on public.clients for update
   using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+-- Deleting a client cascades its projects/tasks/check-ins, so it's admin-only.
+create policy "clients_delete" on public.clients for delete using (public.is_admin());
 
 -- ============ PROJECTS ============
 create table if not exists public.projects (

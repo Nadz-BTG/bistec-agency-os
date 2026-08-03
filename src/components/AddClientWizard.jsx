@@ -10,12 +10,22 @@ function slug(name) {
 
 function extractFromText(text) {
   const quoted = [...text.matchAll(/"([^"]+)"/g)].map(m => m[1])
-  const positioning = quoted[0] || (text.split(/\.\s/)[0] || '').trim()
-  let neverSay = []
-  const neverSayMatch = text.match(/(?:never say|hates the phrase|avoid the phrase)[^"']*["']([^"']+)["']/i)
-  if (neverSayMatch) neverSay = [neverSayMatch[1]]
-  const icpMatches = [...text.matchAll(/([A-Z][a-z]+(?:[ -][A-Z]?[a-z]+){0,3}\s(?:director|manager|lead|CFO|CMO|CEO|coordinator))/g)].map(m => m[1])
-  return { positioning, neverSay, icps: [...new Set(icpMatches)].slice(0, 3) }
+  const sentences = text.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean)
+  const positioningSentence = sentences.find(s => /position|different|instead of|not (about|selling)/i.test(s))
+  const positioning = quoted[0] || positioningSentence || sentences[0] || ''
+
+  // Every quoted phrase that follows a "never say" / "avoid" / "hates the
+  // phrase" cue anywhere in the text — not just the first one.
+  const neverSayCues = /(?:never say|hates? the phrase|avoid(?:s)? the phrase|don't say|do not say|avoid saying)[^"']*/gi
+  const neverSay = []
+  for (const cueMatch of text.matchAll(neverSayCues)) {
+    const after = text.slice(cueMatch.index, cueMatch.index + cueMatch[0].length + 120)
+    const phrase = after.match(/["']([^"']+)["']/)
+    if (phrase && !neverSay.includes(phrase[1])) neverSay.push(phrase[1])
+  }
+
+  const icpMatches = [...text.matchAll(/([A-Z][a-z]+(?:[ -][A-Z]?[a-z]+){0,3}\s(?:director|manager|lead|head|CFO|CMO|CEO|CTO|coordinator|owner))/g)].map(m => m[1])
+  return { positioning, neverSay, icps: [...new Set(icpMatches)].slice(0, 5) }
 }
 
 export default function AddClientWizard({ team, onCreate, onCancel }) {
@@ -24,6 +34,7 @@ export default function AddClientWizard({ team, onCreate, onCancel }) {
   const [source, setSource] = useState('')
   const [read, setRead] = useState({ positioning: '', icps: [], neverSay: [] })
   const [icpInput, setIcpInput] = useState('')
+  const [neverSayInput, setNeverSayInput] = useState('')
 
   function extract() {
     setRead(extractFromText(source))
@@ -37,6 +48,16 @@ export default function AddClientWizard({ team, onCreate, onCancel }) {
 
   function removeIcp(icp) {
     setRead(r => ({ ...r, icps: r.icps.filter(i => i !== icp) }))
+  }
+
+  function addNeverSay() {
+    if (!neverSayInput.trim()) return
+    setRead(r => ({ ...r, neverSay: [...r.neverSay, neverSayInput.trim()] }))
+    setNeverSayInput('')
+  }
+
+  function removeNeverSay(phrase) {
+    setRead(r => ({ ...r, neverSay: r.neverSay.filter(n => n !== phrase) }))
   }
 
   function create() {
@@ -68,7 +89,7 @@ export default function AddClientWizard({ team, onCreate, onCancel }) {
       { title: 'Content calendar v1', projectId: projects[1].id },
     ]
     const tasks = starterTasks.map(st => ({
-      title: st.title, clientId: id, projectId: st.projectId, owner: basics.lead, priority: 'Med', due: '', column: 'backlog',
+      title: st.title, clientId: id, projectId: st.projectId, owner: basics.lead, priority: 'Med', column: 'backlog',
     }))
     onCreate({ client, projects, tasks })
   }
@@ -175,10 +196,11 @@ export default function AddClientWizard({ team, onCreate, onCancel }) {
               <div>
                 <div style={{ fontSize: 11.5, color: COLORS.textFaint }}>Never say</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 5 }}>
-                  {read.neverSay.length === 0 && <span style={{ fontSize: 11.5, color: COLORS.textFaint, fontStyle: 'italic' }}>none captured</span>}
                   {read.neverSay.map(n => (
-                    <span key={n} style={{ padding: '4px 9px', borderRadius: 6, background: '#FDE7D3', color: COLORS.orangeDark, fontSize: 11.5 }}>"{n}"</span>
+                    <span key={n} onClick={() => removeNeverSay(n)} style={{ padding: '4px 9px', borderRadius: 6, background: '#FDE7D3', color: COLORS.orangeDark, fontSize: 11.5, cursor: 'pointer' }}>"{n}" ✕</span>
                   ))}
+                  <input value={neverSayInput} onChange={e => setNeverSayInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addNeverSay() } }}
+                    placeholder="+ add" style={{ border: `1px dashed ${COLORS.borderStrong}`, borderRadius: 6, padding: '4px 9px', fontSize: 11.5, width: 90 }} />
                 </div>
               </div>
             </div>

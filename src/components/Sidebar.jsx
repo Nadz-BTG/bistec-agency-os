@@ -90,17 +90,35 @@ export default function Sidebar({
       </div>
 
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ font: `500 10px ${FONT_MONO}`, letterSpacing: '.09em', color: '#8FA3C0' }}>TEAM</div>
-        {team.map(m => (
-          <div key={m.id} className="team-row" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#EAF0F8' }}>
-            <Avatar name={m.name} initials={m.initials} team={team} size={24} />
-            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {m.name} <span style={{ color: '#8FA3C0', fontSize: 11 }}>· {m.role}</span>
-              {currentUser?.id === m.id && <span style={{ color: COLORS.orange, fontSize: 10.5, fontWeight: 600 }}> · you</span>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <div style={{ font: `500 10px ${FONT_MONO}`, letterSpacing: '.09em', color: '#8FA3C0' }}>TEAM</div>
+          {currentUser && (
+            <span onClick={() => onEditTeamMember(currentUser)} style={{ fontSize: 10.5, color: COLORS.orange, cursor: 'pointer', fontWeight: 600 }}>
+              Edit my profile
             </span>
-            <EditDeleteIcons light onEdit={() => onEditTeamMember(m)} onDelete={() => onDeleteTeamMember(m)} deleteTitle="Remove teammate" />
-          </div>
-        ))}
+          )}
+        </div>
+        {team.map(m => {
+          const isSelf = currentUser?.id === m.id
+          const canEdit = isSelf || currentUser?.isAdmin
+          const canDelete = !isSelf && currentUser?.isAdmin
+          return (
+            <div key={m.id} className="team-row" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#EAF0F8' }}>
+              <Avatar name={m.name} initials={m.initials} team={team} size={24} />
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {m.name} <span style={{ color: '#8FA3C0', fontSize: 11 }}>· {m.role}</span>
+                {m.isAdmin && <span style={{ color: COLORS.orange, fontSize: 10.5, fontWeight: 600 }}> · admin</span>}
+                {isSelf && <span style={{ color: COLORS.orange, fontSize: 10.5, fontWeight: 600 }}> · you</span>}
+              </span>
+              <EditDeleteIcons
+                light
+                onEdit={canEdit ? () => onEditTeamMember(m) : undefined}
+                onDelete={canDelete ? () => onDeleteTeamMember(m) : undefined}
+                deleteTitle="Remove teammate"
+              />
+            </div>
+          )
+        })}
         {team.length === 0 && <div style={{ fontSize: 11.5, color: '#8FA3C0', fontStyle: 'italic' }}>No teammates yet</div>}
         <div onClick={inviteTeammate} title="Copy the app link to invite them" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#8FA3C0', cursor: 'pointer' }}>
           <div style={{ width: 24, height: 24, borderRadius: '50%', border: '1px dashed rgba(255,255,255,.28)', display: 'grid', placeItems: 'center' }}>

@@ -19,7 +19,7 @@ function formatBytes(bytes) {
 }
 
 export default function ClientWorkspace({
-  client, tasks, projects, checkins, team, onUpdateClient, onEditClient, onDeleteClient,
+  client, tasks, projects, checkins, team, isAdmin, onUpdateClient, onEditClient, onDeleteClient,
   onToggleTask, onEditTask, onDeleteTask, onDeleteTasks, onAddTask,
   onOpenAiDrawer, onOpenKanban, onOpenCheckIn,
   onAddProject, onEditProject, onDeleteProject,
@@ -80,7 +80,7 @@ export default function ClientWorkspace({
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <EditDeleteIcons onEdit={onEditClient} onDelete={onDeleteClient} deleteTitle="Delete client" />
+          <EditDeleteIcons onEdit={onEditClient} onDelete={isAdmin ? onDeleteClient : undefined} deleteTitle="Delete client" />
           <Button variant="outline" onClick={() => onOpenCheckIn(client.id)}>Check-in</Button>
           <Button variant="accent" onClick={() => onOpenAiDrawer(client.id)} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', opacity: 0.9 }} />
