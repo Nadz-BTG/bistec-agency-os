@@ -215,9 +215,19 @@ export default function App() {
       chasedCount: 0, cold: false, status: 'open', progress: null, note: null, done: false, ownerType: 'team', snoozed: false, ...t,
     }))
     setState(s => ({ ...s, clients: [...s.clients, client], projects: [...s.projects, ...newProjects], tasks: [...s.tasks, ...fullTasks] }))
-    sync(supabase.from('clients').insert(client))
-    sync(supabase.from('projects').insert(newProjects))
-    sync(supabase.from('tasks').insert(fullTasks))
+    sync(
+      supabase.from('clients').insert(client).then(({ error }) => {
+        if (error) throw error
+        return Promise.all([
+          supabase.from('projects').insert(newProjects),
+          supabase.from('tasks').insert(fullTasks),
+        ]).then(([pr, tk]) => {
+          if (pr.error) throw pr.error
+          if (tk.error) throw tk.error
+          return { error: null }
+        })
+      })
+    )
     navigate('client', client.id)
   }
 
