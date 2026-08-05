@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { COLORS, AVATAR_SWATCHES } from '../theme.js'
-import { STAGES, PRIORITIES, PROJECT_STATUSES, OWNER_TYPES, TASK_COLUMNS, TEAM_ROLES } from '../constants.js'
+import { STAGES, PRIORITIES, PROJECT_STATUSES, TASK_COLUMNS, TEAM_ROLES } from '../constants.js'
 import { todayISO } from '../dates.js'
 import { Modal, Field, Button, TagListEditor, IconButton, inputStyle, textareaStyle, teamName } from './ui.jsx'
 import { Trash2 } from 'lucide-react'
@@ -188,6 +188,8 @@ export function EditProjectModal({ project, isNew, team, onSave, onClose }) {
 
 const OTHER_CONTACT = '__other__'
 
+const ASSIGNEE_OTHER = 'external:'
+
 export function EditTaskModal({ task, isNew, clients, projects, team, fixedClientId, fixedProjectId, onSave, onClose }) {
   const [form, setForm] = useState(task || {
     title: '', clientId: fixedClientId || clients[0]?.id || '', projectId: fixedProjectId || null,
@@ -199,6 +201,16 @@ export function EditTaskModal({ task, isNew, clients, projects, team, fixedClien
   const clientContacts = selectedClient?.contacts || []
   const clientProjects = projects.filter(p => p.clientId === form.clientId)
   const isWaiting = !!form.askedDate
+
+  // Single name-based picker backed by the same ownerType/owner pair the
+  // rest of the app (badges, "my tasks" filter) keys off — "team"/"client"/
+  // "external" stay internal, the person only ever sees real names.
+  const assigneeValue = form.ownerType === 'external' ? ASSIGNEE_OTHER : `${form.ownerType}:${form.owner}`
+  function setAssignee(value) {
+    if (value === ASSIGNEE_OTHER) { set({ ownerType: 'external', owner: form.ownerType === 'external' ? form.owner : '' }); return }
+    const sep = value.indexOf(':')
+    set({ ownerType: value.slice(0, sep), owner: value.slice(sep + 1) })
+  }
   const [useOtherContact, setUseOtherContact] = useState(
     !!form.waitingOn && !clientContacts.some(c => c.name === form.waitingOn)
   )
@@ -243,23 +255,23 @@ export function EditTaskModal({ task, isNew, clients, projects, team, fixedClien
           {clientProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </Field>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="Assigned to">
-          <select style={inputStyle} value={form.ownerType} onChange={e => set({ ownerType: e.target.value, owner: e.target.value === 'team' ? (team[0]?.id || '') : '' })}>
-            {OWNER_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </Field>
-        <Field label="Assignee">
-          {form.ownerType === 'team' ? (
-            <select style={inputStyle} value={form.owner} onChange={e => set({ owner: e.target.value })}>
-              {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              {team.length === 0 && <option value="">— no teammates —</option>}
-            </select>
-          ) : (
-            <input style={inputStyle} value={form.owner} onChange={e => set({ owner: e.target.value })} placeholder="Name" />
+      <Field label="Assign to">
+        <select style={inputStyle} value={assigneeValue} onChange={e => setAssignee(e.target.value)}>
+          <optgroup label="Team">
+            {team.map(m => <option key={m.id} value={`team:${m.id}`}>{m.name}</option>)}
+            {team.length === 0 && <option value="team:" disabled>— no teammates —</option>}
+          </optgroup>
+          {clientContacts.length > 0 && (
+            <optgroup label="Client contacts">
+              {clientContacts.map(c => <option key={c.name} value={`client:${c.name}`}>{c.name}</option>)}
+            </optgroup>
           )}
-        </Field>
-      </div>
+          <option value={ASSIGNEE_OTHER}>Someone else…</option>
+        </select>
+        {form.ownerType === 'external' && (
+          <input style={{ ...inputStyle, marginTop: 8 }} value={form.owner} onChange={e => set({ owner: e.target.value })} placeholder="Their name" autoFocus />
+        )}
+      </Field>
       {!isNew && task?.assignedBy && (
         <div style={{ margin: '-6px 0 12px', fontSize: 11, color: COLORS.textFaint, fontStyle: 'italic' }}>
           Assigned by {teamName(team, task.assignedBy)}

@@ -10,7 +10,7 @@ export default function TasksTable({ tasks, clients, projects, team, onToggleTas
 
   const clientName = id => clients.find(c => c.id === id)?.name || id
   const projectName = id => projects.find(p => p.id === id)?.name || '—'
-  const ownerLabel = t => (t.ownerType === 'team' ? teamName(team, t.owner).toUpperCase() : t.ownerType === 'client' ? 'CLIENT' : 'EXTERNAL')
+  const ownerLabel = t => (t.ownerType === 'team' ? teamName(team, t.owner) : t.owner) || '—'
   const ownerBadgeStyle = t => (
     t.ownerType === 'team'
       ? { background: '#EEF1F6', color: COLORS.textMuted }
