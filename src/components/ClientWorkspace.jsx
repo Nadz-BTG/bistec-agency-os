@@ -284,7 +284,7 @@ export default function ClientWorkspace({
         <div style={{ padding: '24px 32px 32px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {clientCheckins.length === 0 && <div style={{ fontSize: 13, color: COLORS.textFaint }}>No check-ins logged yet.</div>}
           {clientCheckins.map(ci => (
-            <div key={ci.id} onClick={() => onOpenCheckIn(client.id)} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '14px 18px', cursor: 'pointer' }}>
+            <div key={ci.id} onClick={() => onOpenCheckIn(client.id, ci.id)} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '14px 18px', cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600 }}>Week of {formatDate(ci.weekStart)}</div>
                 <span style={{ fontSize: 11.5, color: ci.status === 'draft' ? COLORS.amberDark : COLORS.blue }}>{ci.status === 'draft' ? 'Draft' : 'Sent'}</span>

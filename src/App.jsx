@@ -31,6 +31,7 @@ export default function App() {
   const [view, setView] = useState('home')
   const [activeClientId, setActiveClientId] = useState(null)
   const [activeProjectId, setActiveProjectId] = useState(null)
+  const [activeCheckInId, setActiveCheckInId] = useState(null)
   const [aiDrawer, setAiDrawer] = useState({ open: false, clientId: null, initialPrompt: '', nonce: 0 })
 
   const [clientModal, setClientModal] = useState(null)
@@ -115,8 +116,10 @@ export default function App() {
 
   function navigate(nextView, clientId) { setView(nextView); if (clientId) setActiveClientId(clientId) }
   function openClient(id) { navigate('client', id) }
+  // Passing checkinId opens that exact check-in (draft or already sent) —
+  // without it, falls back to the client's current draft, or a fresh one.
+  function openCheckIn(clientId, checkinId) { setActiveCheckInId(checkinId || null); navigate('checkin', clientId) }
   function openKanban(clientId, projectId) { setActiveProjectId(projectId); navigate('kanban', clientId) }
-  function openCheckIn(clientId) { navigate('checkin', clientId) }
   function openAiDrawer(clientId, initialPrompt = '') { setAiDrawer(d => ({ open: true, clientId, initialPrompt, nonce: d.nonce + 1 })) }
   function closeAiDrawer() { setAiDrawer(d => ({ ...d, open: false })) }
 
@@ -327,7 +330,9 @@ export default function App() {
   }
 
   const activeCheckIn = activeClient
-    ? [...checkins].reverse().find(c => c.clientId === activeClient.id && c.status === 'draft') || null
+    ? (activeCheckInId ? checkins.find(c => c.id === activeCheckInId) : null)
+      || (!activeCheckInId ? [...checkins].reverse().find(c => c.clientId === activeClient.id && c.status === 'draft') : null)
+      || null
     : null
 
   if (session === undefined) return null

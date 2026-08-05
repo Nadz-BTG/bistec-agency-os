@@ -49,7 +49,7 @@ export default function CheckinsHub({ clients, checkins, onOpenCheckIn, onDelete
           return (
             <div key={ci.id} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <Checkbox checked={selected.has(ci.id)} onClick={() => toggleOne(ci.id)} />
-              <div onClick={() => onOpenCheckIn(ci.clientId)} style={{ flex: 1, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <div onClick={() => onOpenCheckIn(ci.clientId, ci.id)} style={{ flex: 1, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{client.name} <span style={{ fontWeight: 400, color: COLORS.textFaint, fontSize: 12.5 }}>· Week of {formatDate(ci.weekStart)}</span></div>
                   <div style={{ fontSize: 12.5, color: COLORS.textMuted, marginTop: 4, maxWidth: 560 }}>{ci.nextPriority}</div>
