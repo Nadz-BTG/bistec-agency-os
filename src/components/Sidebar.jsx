@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { key: 'home', label: 'Home' },
   { key: 'tasks', label: 'My tasks', countKey: 'mine' },
   { key: 'chase', label: 'Waiting on client', countKey: 'waiting' },
+  { key: 'calendar', label: 'Calendar' },
   { key: 'checkins', label: 'Check-ins' },
 ]
 

@@ -40,9 +40,15 @@ function generateFromTasks(clientId, tasks) {
     ? `${t.title} — waiting ${t.waitingDays}d${t.waitingOn ? ` on ${t.waitingOn}` : ''}`
     : `${t.title} — ${t.overdueDays}d overdue`))
   const worst = flagged[0]
-  const nextPriority = worst
-    ? `Unblock "${worst.title}"${worst.blocks ? ` — ${worst.blocks}` : ''}.`
-    : 'Nothing urgent — keep the current pace.'
+  const runnerUp = flagged[1]
+  let nextPriority = 'Nothing urgent — keep the current pace.'
+  if (worst) {
+    nextPriority = `Unblock "${worst.title}"${worst.blocks ? ` — ${worst.blocks}` : ''}.`
+    if (runnerUp) {
+      const restCount = flagged.length - 2
+      nextPriority += ` Also chase "${runnerUp.title}"${restCount > 0 ? ` and ${restCount} other flagged item${restCount > 1 ? 's' : ''}` : ''}.`
+    }
+  }
   return { wentOut, outstanding, nextPriority }
 }
 

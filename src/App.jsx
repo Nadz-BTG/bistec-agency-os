@@ -8,6 +8,7 @@ import Home from './components/Home.jsx'
 import ClientWorkspace from './components/ClientWorkspace.jsx'
 import TasksTable from './components/TasksTable.jsx'
 import ChaseQueue from './components/ChaseQueue.jsx'
+import Calendar from './components/Calendar.jsx'
 import KanbanBoard from './components/KanbanBoard.jsx'
 import AiDrawer from './components/AiDrawer.jsx'
 import AddClientWizard from './components/AddClientWizard.jsx'
@@ -167,8 +168,14 @@ export default function App() {
   }
 
   function moveTask(id, column) {
-    setState(s => ({ ...s, tasks: s.tasks.map(t => (t.id === id ? { ...t, column } : t)) }))
-    sync(supabase.from('tasks').update({ column }).eq('id', id))
+    const existing = state.tasks.find(t => t.id === id)
+    // The "Live" column is the one kanban stage that also flips task status,
+    // since Home's shipped stat and the check-in auto-draft both read
+    // status, not column, to find what actually went out.
+    const status = column === 'live' ? 'live' : existing?.status === 'live' ? 'open' : existing?.status
+    const patch = { column, status }
+    setState(s => ({ ...s, tasks: s.tasks.map(t => (t.id === id ? { ...t, ...patch } : t)) }))
+    sync(supabase.from('tasks').update(patch).eq('id', id))
   }
 
   function snoozeChase(id) {
@@ -420,6 +427,15 @@ export default function App() {
           onSnooze={snoozeChase}
           onDraftChase={draftChase}
           onDeleteTask={id => { if (window.confirm('Remove this from the chase queue? This deletes the task.')) deleteTask(id) }}
+        />
+      )}
+
+      {view === 'calendar' && (
+        <Calendar
+          tasks={tasks}
+          clients={clients}
+          onEditTask={t => setTaskModal({ isNew: false, data: t })}
+          onOpenCheckIn={openCheckIn}
         />
       )}
 

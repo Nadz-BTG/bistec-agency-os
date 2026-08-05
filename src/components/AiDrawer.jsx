@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { COLORS, FONT_MONO } from '../theme.js'
-import { relativeDayLabel } from '../dates.js'
+import { relativeDayLabel, daysBetween, todayISO } from '../dates.js'
 
-const SHORTCUTS = ['LinkedIn post', 'Chase email', 'Next actions', 'Check-in summary']
+const SHORTCUTS = ['LinkedIn post', 'Chase email', 'Next actions', 'Due this week', 'Check-in summary']
 
 function buildReply(promptRaw, client, tasks) {
   const prompt = promptRaw.toLowerCase()
@@ -10,6 +10,8 @@ function buildReply(promptRaw, client, tasks) {
   const overdue = clientTasks.filter(t => t.overdueDays).sort((a, b) => b.overdueDays - a.overdueDays)
   const waiting = clientTasks.filter(t => t.waitingDays != null).sort((a, b) => b.waitingDays - a.waitingDays)
   const open = clientTasks.filter(t => t.status === 'open')
+  const dueThisWeek = open.filter(t => t.dueDate && !t.overdueDays && !t.waitingDays && daysBetween(todayISO(), t.dueDate) <= 6)
+    .sort((a, b) => daysBetween(todayISO(), a.dueDate) - daysBetween(todayISO(), b.dueDate))
 
   if (prompt.includes('risk')) {
     if (!waiting.length && !overdue.length) {
@@ -18,8 +20,21 @@ function buildReply(promptRaw, client, tasks) {
     const parts = []
     if (waiting.length) parts.push(`**${waiting[0].title}** has been sitting with ${waiting[0].waitingOn} for ${waiting[0].waitingDays} days${waiting[0].blocks ? ` — ${waiting[0].blocks}` : ''}.`)
     if (overdue.length) parts.push(`**${overdue[0].title}** is ${overdue[0].overdueDays} days past due.`)
+    if (overdue.length > 1 || waiting.length > 1) parts.push(`That's ${overdue.length} overdue and ${waiting.length} waiting on ${client.name} in total.`)
     parts.push('Want me to write one email covering both, or turn these into tracked tasks?')
     return parts
+  }
+
+  if (prompt.includes('overdue')) {
+    if (!overdue.length) return [`Nothing overdue for ${client.name} right now.`]
+    const lines = overdue.slice(0, 6).map(t => `— **${t.title}** — ${t.overdueDays}d overdue`)
+    return [`${overdue.length} overdue for ${client.name}:`, lines.join('\n')]
+  }
+
+  if (prompt.includes('due this week') || prompt.includes('calendar') || (prompt.includes('due') && prompt.includes('week'))) {
+    if (!dueThisWeek.length) return [`Nothing due in the next 7 days for ${client.name}.`]
+    const lines = dueThisWeek.map(t => `— ${t.title} (${t.due})`)
+    return [`Due in the next 7 days for ${client.name}:`, lines.join('\n')]
   }
 
   if (prompt.includes('chase') || prompt.includes('bundle')) {
@@ -38,7 +53,10 @@ function buildReply(promptRaw, client, tasks) {
   }
 
   if (prompt.includes('check-in') || prompt.includes('summary')) {
-    return [client.narrative.text, 'Want this dropped straight into a check-in draft?']
+    const bits = [client.narrative.text]
+    if (overdue.length || waiting.length) bits.push(`Heading into this check-in: ${overdue.length} overdue, ${waiting.length} waiting on ${client.name}.`)
+    bits.push('Want this dropped straight into a check-in draft?')
+    return bits
   }
 
   if (prompt.includes('linkedin post')) {
@@ -51,7 +69,10 @@ function buildReply(promptRaw, client, tasks) {
   }
 
   const nextCheckIn = client.nextCheckInDate ? relativeDayLabel(client.nextCheckInDate) : 'next'
-  return [client.narrative.text, `Want me to draft a chase, suggest next actions, or summarise this for the ${nextCheckIn} check-in?`]
+  const status = overdue.length || waiting.length
+    ? ` Right now: ${overdue.length} overdue, ${waiting.length} waiting on them, ${dueThisWeek.length} due this week.`
+    : ''
+  return [client.narrative.text + status, `Want me to draft a chase, suggest next actions, or summarise this for the ${nextCheckIn} check-in?`]
 }
 
 export default function AiDrawer({ open, client, tasks, initialPrompt, nonce, onClose }) {

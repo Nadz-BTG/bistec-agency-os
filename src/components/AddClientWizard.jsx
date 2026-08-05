@@ -11,7 +11,8 @@ function slug(name) {
 function extractFromText(text) {
   const quoted = [...text.matchAll(/"([^"]+)"/g)].map(m => m[1])
   const sentences = text.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean)
-  const positioningSentence = sentences.find(s => /position|different|instead of|not (about|selling)/i.test(s))
+  const positioningKeywords = /position|different|instead of|not (about|selling)|the problem is|what makes|stands? out|unlike|rather than/i
+  const positioningSentence = sentences.find(s => positioningKeywords.test(s))
   const positioning = quoted[0] || positioningSentence || sentences[0] || ''
 
   // Every quoted phrase that follows a "never say" / "avoid" / "hates the
@@ -24,8 +25,14 @@ function extractFromText(text) {
     if (phrase && !neverSay.includes(phrase[1])) neverSay.push(phrase[1])
   }
 
-  const icpMatches = [...text.matchAll(/([A-Z][a-z]+(?:[ -][A-Z]?[a-z]+){0,3}\s(?:director|manager|lead|head|CFO|CMO|CEO|CTO|coordinator|owner))/g)].map(m => m[1])
-  return { positioning, neverSay, icps: [...new Set(icpMatches)].slice(0, 5) }
+  // Two shapes of job title: "<Name-ish words> <suffix>" (Marketing Director)
+  // and "<prefix> of <department>" (Head of Growth, VP of Sales).
+  const TITLE_SUFFIXES = 'director|manager|lead|head|coordinator|owner|founder|president|partner|chief|CFO|CMO|CEO|CTO|COO|VP'
+  const titleFirst = [...text.matchAll(new RegExp(`([A-Z][a-z]+(?:[ -][A-Z]?[a-z]+){0,3}\\s(?:${TITLE_SUFFIXES}))`, 'g'))].map(m => m[1])
+  const titleOf = [...text.matchAll(/((?:Head|VP|Director|Manager|Lead|Chief|President)\s(?:of\s)?[A-Z][a-z]+(?:\s(?:&|and)?\s?[A-Z][a-z]+)?)/g)].map(m => m[1])
+  const icps = [...new Set([...titleFirst, ...titleOf])].slice(0, 6)
+
+  return { positioning, neverSay, icps }
 }
 
 export default function AddClientWizard({ team, onCreate, onCancel }) {
