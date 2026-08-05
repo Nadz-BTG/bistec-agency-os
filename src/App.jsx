@@ -128,13 +128,21 @@ export default function App() {
     sync(supabase.from('tasks').update(patch).eq('id', id))
   }
 
+  // Task rows flowing through the UI carry client-only display fields
+  // (due/overdueDays/waitingDays, computed below from dueDate etc.) —
+  // strip them before any write to Supabase, which has no such columns.
+  function stripComputedTaskFields(row) {
+    const { due, overdueDays, waitingDays, ...rest } = row
+    return rest
+  }
+
   function addTask(draft) {
-    const row = {
+    const row = stripComputedTaskFields({
       id: newId('t'), projectId: null, dueDate: null, askedDate: null, waitingOn: null, blocks: null,
       chasedCount: 0, cold: false, column: 'backlog', status: 'open', progress: null, note: null, done: false,
       ownerType: 'team', priority: 'Med', assignedBy: currentUser?.id || null, snoozed: false,
       ...draft,
-    }
+    })
     setState(s => ({ ...s, tasks: [...s.tasks, row] }))
     sync(supabase.from('tasks').insert(row))
   }
@@ -142,7 +150,7 @@ export default function App() {
   function updateTask(id, patch) {
     const existing = state.tasks.find(t => t.id === id)
     const reassigned = existing && 'owner' in patch && patch.owner !== existing.owner
-    const fullPatch = { ...patch, ...(reassigned ? { assignedBy: currentUser?.id || null } : {}) }
+    const fullPatch = stripComputedTaskFields({ ...patch, ...(reassigned ? { assignedBy: currentUser?.id || null } : {}) })
     setState(s => ({ ...s, tasks: s.tasks.map(t => (t.id === id ? { ...t, ...fullPatch } : t)) }))
     sync(supabase.from('tasks').update(fullPatch).eq('id', id))
   }
